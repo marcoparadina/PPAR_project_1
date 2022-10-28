@@ -1,3 +1,3 @@
 # PPAR project #1
 
-Only use this repo for the project, no TMEs
+secret bill gates project to destroy the world by computing the elevation of places
