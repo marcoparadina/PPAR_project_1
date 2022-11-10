@@ -6,6 +6,7 @@
         "harmonics.h": "c",
         "math.h": "c",
         "compare": "c",
-        "complex": "c"
+        "complex": "c",
+        "lapacke_config.h": "c"
     }
 }

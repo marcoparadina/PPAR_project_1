@@ -4,15 +4,13 @@
 #include <stdio.h>
 #include <getopt.h>
 #include <err.h>
-#include <lapacke.h>
+#include <lapack.h>
 #include "harmonics.h"
-
 
 #define THIS_MACHINE_FLOPS_PER_SEC 26140000000
 
 
-extern int dgels_(char * /* TRANS */, int * /* M */, int * /* N */, int * /* NRHS */, double [] /* A */, int * /* LDA */, double [] /* B */, 
-int * /* LDB */);
+extern void dgels(char * trans, int * m, int * n, int * nrhs, double * A, int * lda, double * B, int * ldb, double * work, int * lwork, int * info);
 
 int lmax = -1;
 int npoint;
@@ -308,14 +306,19 @@ int main(int argc, char ** argv)
 	/*************************WITH DGELS***************************/
 
 	/* define the parameters to give to dgels*/
-	lapack_int info, m, n, nrhs, lda, ldb;
+	lapack_int m, n, nrhs, lda, ldb, lwork, info;
+	char trans = 'N';
 	m = npoint;	//Number of rows of the A matrix
 	n = nvar;	//Number of columns of the A matrix
 	nrhs = 1;	//Number of columns of the x and B matrices, where ||Ax-B|| is the system that we're minimizing
 	lda = npoint; //Leading dimension of the A matrix, i.e. its number of columns
 	ldb = npoint; //Leading dimension of the B matrix, i.e. its number of columns
+	lwork = 4*nvar;
+	info = 0; 
+	double work[4*nvar];
 
-	info = dgels_('N', &m, &n, &nrhs, A, &lda, data.V, &ldb);
+	dgels_(&trans, &m, &n, &nrhs, A, &lda, data.V, &ldb, work, &lwork, &info, 0);
+	
 	/**************************************************************/
 	
 	double t = wtime()  - start;
