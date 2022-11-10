@@ -4,6 +4,8 @@
         "lapacke.h": "c",
         "lapack.h": "c",
         "harmonics.h": "c",
-        "math.h": "c"
+        "math.h": "c",
+        "compare": "c",
+        "complex": "c"
     }
 }

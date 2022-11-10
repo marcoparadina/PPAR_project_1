@@ -11,8 +11,8 @@
 #define THIS_MACHINE_FLOPS_PER_SEC 26140000000
 
 
-//extern double dgels(char * /* TRANS */, int * /* M */, int * /* N */, int * /* NRHS */, double [] /* A */, int * /* LDA */, double [] /* B */, 
-//int * /* LDB */, double [] /* WORK */,int * /* LWORK */, int * /* INFO */);
+extern int dgels_(char * /* TRANS */, int * /* M */, int * /* N */, int * /* NRHS */, double [] /* A */, int * /* LDA */, double [] /* B */, 
+int * /* LDB */);
 
 int lmax = -1;
 int npoint;
@@ -315,7 +315,7 @@ int main(int argc, char ** argv)
 	lda = npoint; //Leading dimension of the A matrix, i.e. its number of columns
 	ldb = npoint; //Leading dimension of the B matrix, i.e. its number of columns
 
-	info = LAPACKE_dgels(LAPACK_COL_MAJOR, 'N', m, n, nrhs, A, lda, data.V, ldb);
+	info = dgels_('N', &m, &n, &nrhs, A, &lda, data.V, &ldb);
 	/**************************************************************/
 	
 	double t = wtime()  - start;
