@@ -1,6 +1,7 @@
 # PPAR project 1: Earth elevation data #
 
 `model_old.c` is the code that we were given unchanged
+
 `model.c` solves the least square problem using the DGELS LAPACK function.
 
 ## Compiling ##
