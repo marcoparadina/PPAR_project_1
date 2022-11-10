@@ -4,15 +4,10 @@
 #include <stdio.h>
 #include <getopt.h>
 #include <err.h>
-#include <lapacke.h>
+
 #include "harmonics.h"
 
-
 #define THIS_MACHINE_FLOPS_PER_SEC 26140000000
-
-
-//extern double dgels(char * /* TRANS */, int * /* M */, int * /* N */, int * /* NRHS */, double [] /* A */, int * /* LDA */, double [] /* B */, 
-//int * /* LDB */, double [] /* WORK */,int * /* LWORK */, int * /* INFO */);
 
 int lmax = -1;
 int npoint;
@@ -70,7 +65,6 @@ void process_command_line_options(int argc, char ** argv)
 /*
  * Return the euclidean norm of x[0:n] using tricks for a greater precision
  */
-
 double norm(int n, double const *x)
 {
    double rdwarf = 3.834e-20, rgiant = 1.304e19;
@@ -299,24 +293,8 @@ int main(int argc, char ** argv)
 	printf("Least Squares (%sFLOP)\n", hflop);
 	double start = wtime();
 	
-	/*************************WITHOUT DGELS*************************/
-
 	/* the real action takes place here */
-	//linear_least_squares(npoint, nvar, A, data.V);
-	/**************************************************************/
-
-	/*************************WITH DGELS***************************/
-
-	/* define the parameters to give to dgels*/
-	lapack_int info, m, n, nrhs, lda, ldb;
-	m = npoint;	//Number of rows of the A matrix
-	n = nvar;	//Number of columns of the A matrix
-	nrhs = 1;	//Number of columns of the x and B matrices, where ||Ax-B|| is the system that we're minimizing
-	lda = npoint; //Leading dimension of the A matrix, i.e. its number of columns
-	ldb = npoint; //Leading dimension of the B matrix, i.e. its number of columns
-
-	info = LAPACKE_dgels(LAPACK_COL_MAJOR, 'N', m, n, nrhs, A, lda, data.V, ldb);
-	/**************************************************************/
+	linear_least_squares(npoint, nvar, A, data.V);
 	
 	double t = wtime()  - start;
 	double FLOPS = FLOP / t;
@@ -338,5 +316,4 @@ int main(int argc, char ** argv)
 		for (int m = 1; m <= l; m++)
 			fprintf(g, "%d\t%d\t%.18g\t%.18g\n", l, m, data.V[CT(l, m)], data.V[ST(l, m)]);
 	}
-	return(info);
 }

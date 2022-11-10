@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "assert.h": "c",
+        "lapacke.h": "c",
+        "lapack.h": "c",
+        "harmonics.h": "c",
+        "math.h": "c"
+    }
+}

@@ -1,15 +1,15 @@
-LDLIBS = -lm 
-CFLAGS = -Wall -g -O3
+LDLIBS = -llapacke -lm 
+CFLAGS = -g -Wall -O3 
 
-ALL: model validate
+ALL: model_old validate
 
-model: model.o harmonics.o
+model_old: model_old.o harmonics.o
 validate: validate.o harmonics.o 
-model.o: harmonics.h
+model_old.o: harmonics.h
 quality.o: harmonics.h
 harmonics.o: harmonics.h
 
 .PHONY: clean
 
 clean:
-	rm -f model validate *.o
+	rm -f model_old validate *.o
