@@ -11,14 +11,16 @@ Just run the `Makefile` with the command `make`
 ## Calling a LAPACK function in C ##
 
 Since LAPACK is written in fortran, some adjustments had to be made to call the DGELS function from C:
-- At the beginning of model.c the we write the signature of the LAPACK function after the keyword `extern`. This is used by the compiler to link the function in the c file to the one in the library. The name of the function is the same as the original in fortran, but in lowercase
-Example for the DGELS function: 
-```C
-{
-    extern void dgels(char * trans, int * m, int * n, int * nrhs, double * A, int * lda, double * B, int * ldb, double * work, int * lwork, int * info);
-}
-```
+- At the beginning of model.c the we write the signature of the LAPACK function after the keyword `extern`. This is used by the compiler to link the function in the c file to the one in the library. The name of the function is the same as the original in fortran, but in lowercase.
+
+    Example for the DGELS function: 
+    ```C
+    {
+        extern void dgels(char * trans, int * m, int * n, int * nrhs, double * A, int * lda, double * B, int * ldb, double * work, int * lwork, int * info);
+    }
+    ```
 - When calling the function, the name of the function should be written in lowercase (like in the signature) **followed by an undersore**.
+
     Example for the DGELS function:
     ```C
     {
