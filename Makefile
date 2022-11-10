@@ -1,4 +1,4 @@
-LDLIBS = -lm -llapack  -lblas
+LDLIBS = -lm -llapack -lblas
 CFLAGS = -g -Wall -O3 
 
 ALL: model validate

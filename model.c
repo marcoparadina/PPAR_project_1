@@ -317,7 +317,13 @@ int main(int argc, char ** argv)
 	info = 0; 
 	double work[4*nvar];
 
+	/*Notice how here dgels is followed by and underscore. Why? No idea, but it doesn't work otherwise.
+	  The last parameter is a size_t. I think it represents the size of the string argument, if there is one. Here there's no such 
+	  argument, so I set it to 0, but any value seems to work. This is used by the fortran compiler in some way, and NEEDS to be declared,
+	  otherwise an error message "too few arguments" will be given. 
+	*/
 	dgels_(&trans, &m, &n, &nrhs, A, &lda, data.V, &ldb, work, &lwork, &info, 0);
+	
 	
 	/**************************************************************/
 	
