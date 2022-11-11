@@ -35,3 +35,9 @@ Since LAPACK is written in fortran, some adjustments had to be made to call the 
     Since we're talking with a fortran function, **all arguments are passed by reference**.
     Depending on the fortran compiler, a `size_t` type argument may be required in the function. I think this indicates the size of the string argument of the function, if there is one. In this example there is none, so the argument is 0. This argument is passed by value.
 - The `-llapack` and `-lblas` flags must be added to the `Makefile` to make the compiler link the library with the c file where the LAPACK functinos are being called
+
+## LAPACK and ScaLAPACK documentation for DGLES function##
+
+DGELS is a function that solves linear square problems. More details in the docs
+- LAPACK: https://netlib.org/lapack/explore-html/d7/d3b/group__double_g_esolve_ga225c8efde208eaf246882df48e590eac.html#ga225c8efde208eaf246882df48e590eac
+- ScaLAPACK: https://netlib.org/scalapack/explore-html/dc/d96/pdgels_8f_source.html
