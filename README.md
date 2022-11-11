@@ -8,6 +8,10 @@
 
 Just run the `Makefile` with the command `make`
 
+## Installing LAPACK ##
+
+sudo apt-get install liblapack3
+
 
 ## Calling a LAPACK function in C ##
 
