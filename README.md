@@ -24,7 +24,7 @@ Since LAPACK is written in fortran, some adjustments had to be made to call the 
         extern void dgels(char * trans, int * m, int * n, int * nrhs, double * A, int * lda, double * B, int * ldb, double * work, int * lwork, int * info);
     }
     ```
-- When calling the function, the name of the function should be written in lowercase (like in the signature) **followed by an undersore**.
+- When calling the function, the name of the function should be written in lowercase (like in the signature) **followed by an underscore**.
 
     Example for the DGELS function:
     ```C
