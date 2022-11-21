@@ -7,8 +7,6 @@
 #include <lapack.h>
 #include "harmonics.h"
 
-#define THIS_MACHINE_FLOPS_PER_SEC 26140000000
-
 
 extern void dgels(char * trans, int * m, int * n, int * nrhs, double * A, int * lda, double * B, int * ldb, double * work, int * lwork, int * info);
 
@@ -61,187 +59,6 @@ void process_command_line_options(int argc, char ** argv)
 	if (data_filename == NULL || model_filename == NULL || lmax < 0 || npoint <= 0)
 		usage(argv);
 }
-
-/**************************** LINEAR ALGEBRA *********************************/
-
-
-/*
- * Return the euclidean norm of x[0:n] using tricks for a greater precision
- */
-
-double norm(int n, double const *x)
-{
-   double rdwarf = 3.834e-20, rgiant = 1.304e19;
-   double s1 = 0, s2 = 0, s3 = 0;
-   double x1max = 0, x3max = 0;
-   double agiant = rgiant / ((double) n);
-   for (int i = 0; i < n; i++) {
-       double xabs = fabs(x[i]);
-       if (xabs > rdwarf && xabs < agiant) {  // sum for intermediate components
-	   s2 += xabs * xabs;
-	   continue;
-       }
-       if (xabs <= rdwarf) {                         // sum for small components 
-	   if (xabs > x3max) {
-	       double d3 = x3max / xabs;
-	       s3 = 1 + s3 * (d3 * d3);
-	       x3max = xabs;
-	       continue;
-	   }
-	   if (xabs != 0) {
-	       double d4 = xabs / x3max;
-	       s3 += d4 * d4;
-	   }
-	   continue;
-       }
-       if (xabs <= x1max) {                          // sum for large components
-	   double d2 = xabs / x1max;
-	   s1 += d2 * d2;
-	   continue;
-       }
-       double d1 = x1max / xabs;
-       s1 = 1 + s1 * (d1 * d1);
-       x1max = xabs;
-   }
-   if (s1 == 0) {                                         // calculation of norm
-       if (s2 == 0)
-	   return x3max * sqrt(s3);
-       if (s2 >= x3max)
-	   return sqrt(s2 * (1 + x3max / s2 * (x3max * s3)));
-       if (s2 < x3max)
-	   return sqrt(x3max * (s2 / x3max + x3max * s3));
-   }
-   return x1max * sqrt(s1 + s2 / x1max / x1max);
-}
-
-/*
- * Apply a real elementary reflector H to a real m-by-n matrix C. H is
- * represented in the form
- *
- *       H = I - tau * v * v**T
- *
- * where tau is a real scalar and v is a real vector.
- *
- * C is a 2D array of dimension (ldc, n).  On exit, C is overwritten with H*C.
- * It is required that ldc >= m.
- */
-void multiply_householder(int m, int n, double *v, double tau, double *c, int ldc)
-{
-	for (int j = 0; j < n; j++) {
-		double sum = 0;
-		for (int i = 0; i < m; i++)
-			sum += c[j * ldc + i] * v[i];
-		for (int i = 0; i < m; i++)
-			c[j * ldc + i] -= tau * v[i] * sum;
-	}
-}
-
-/*
- * Compute a QR factorization of a real m-by-n matrix A (with m >= n).
- *
- * A = Q * ( R ),       where:        Q is a m-by-n orthogonal matrix
- *         ( 0 )                      R is an upper-triangular n-by-n matrix
- *                                    0 is a (m-n)-by-n zero matrix
- *
- * A is a 2D array of dimension (m, n)
- * On exit, the elements on and above the diagonal contain R; the elements below
- * the diagonal, with the array tau, represent the orthogonal matrix Q.
- *
- * Q is represented as a product of n elementary reflectors
- *
- *     Q = H(1) * H(2) * ... * H(n).
- *
- *  Each H(i) has the form
- *
- *     H(i) = I - tau[i] * v * v**T
- *
- * where tau[i] is a real scalar, and v is a real vector with v[0:i-1] = 0 and 
- * v[i] = 1; v[i+1:m] is stored on exit in A[i+1:m, i].
- */
-void QR_factorize(int m, int n, double * A, double * tau)
-{
-	for (int i = 0; i < n; ++i) {
-		/* Generate elementary reflector H(i) to annihilate A(i+1:m,i) */
-		double aii = A[i + i * m];
-		double anorm = -norm(m - i, &A[i + i * m]);
-		if (aii < 0)
-			anorm = -anorm;
-		tau[i] = (anorm - aii) / anorm;
-		for (int j = i + 1; j < m; j++)
-			A[i * m + j] /= (aii - anorm);
-
-		/* Apply H(i) to A(i:m,i+1:n) from the left */
-		A[i + i * m] = 1;
-		multiply_householder(m-i, n-i-1, &A[i*m + i], tau[i], &A[(i+1)*m + i], m);
-		A[i + i * m] = anorm;
-	}
-}
-
-/*
- * Overwrite vector c with transpose(Q) * c where Q is a
- * real m-by-m orthogonal matrix defined as the product of k elementary
- * reflectors
- *
- *       Q = H(1) * H(2) ... H(k)
- * 
- * A is a 2D array of dimension (m, k), which contains a QR factorisation
- * computed by QR_factorize().  A is not modified.
- *
- * tau is an array of dimension k. tau[i] must contain the scalar factor of the
- * elementary reflector H(i), as returned by QR_factorize().  tau is read-only.
- *
- * c is a vector of dimension m.  On exit, c is overwritten by transpose(Q)*c.
- */
-void multiply_Qt(int m, int k, double * A, double * tau, double * c)
-{
-	for (int i = 0; i < k; i++) {
-		/* Apply H(i) to A[i:m] */
-		double aii = A[i + i * m];
-		A[i + i * m] = 1;
-		multiply_householder(m-i, 1, &A[i*m + i], tau[i], &c[i], m);
-		A[i + i * m] = aii;
-	}
-}
-
-/*
- * Solve the triangular linear system U*x == b
- *
- * U is a 2D array of dimension (ldu, n) with non-zero diagonal entries. Only
- * the upper-triangle is read by this function. b and x are n element vectors.
- * On exit, b is overwritten with x.
- */
-void triangular_solve(int n, const double *U, int ldu, double *b) 
-{
-	for (int k = n - 1; k >= 0; k--) {
-	   b[k] /= U[k * ldu + k];
-	   for (int i = 0; i < k; i++)
-	       b[i] -= b[k] * U[i + k*ldu];
-    }
-}
-
-/*
- * Solve the least-Squares Problem min || A*x - b || for overdetermined real
- * linear systems involving an m-by-n matrix A using a QR factorization of A.
- * It is assumed that A has full rank (and m >= n).
- *
- * A is a 2D array of dimension (m, n).  On exit, A is overwritten by the 
- * details of its QR factorization (cf. QR_factorize).
- *
- * b is a vector of size m.  On exit, b[0:n] contain the least squares solution 
- * vector; the residual sum of squares for the solution is given by the sum of 
- * squares of b[n:m].
- */
-void linear_least_squares(int m, int n, double *A, double *b)
-{
-	assert(m >= n);
-
-	double tau[n];
-	QR_factorize(m, n, A, tau);                    /* QR factorization of A */
-	multiply_Qt(m, n, A, tau, b);                /* B[0:m] := Q**T * B[0:m] */
-	triangular_solve(n, A, m, b);              /* B[0:n] := inv(R) * B[0:n] */
-}
-
-/*****************************************************************************/
 
 int main(int argc, char ** argv)
 {
@@ -296,14 +113,8 @@ int main(int argc, char ** argv)
 	human_format(hflop, FLOP);
 	printf("Least Squares (%sFLOP)\n", hflop);
 	double start = wtime();
-	
-	/*************************WITHOUT DGELS*************************/
 
-	/* the real action takes place here */
-	//linear_least_squares(npoint, nvar, A, data.V);
-	/**************************************************************/
-
-	/*************************WITH DGELS***************************/
+	/*************************LAPACK CALL***************************/
 
 	/* define the parameters to give to dgels*/
 	lapack_int m, n, nrhs, lda, ldb, lwork, info;
@@ -322,6 +133,7 @@ int main(int argc, char ** argv)
 	  argument, so I set it to 0, but any value seems to work. This is used by the fortran compiler in some way, and NEEDS to be declared,
 	  otherwise an error message "too few arguments" will be given. 
 	*/
+
 	dgels_(&trans, &m, &n, &nrhs, A, &lda, data.V, &ldb, work, &lwork, &info, 0);
 	
 	
