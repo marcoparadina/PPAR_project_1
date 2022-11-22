@@ -194,9 +194,9 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	npcol = NPCOL;
 
 	//Cblacs grid initialization
-	Cblacs_get(&i_neg_one, &i_zero, &ictxt);
-	Cblacs_gridinit_(&ictxt, "R", &nprow, &npcol);
-	Cblacs_gridinfo(&ictxt, &nprow, &npcol, &prow, &pcol); //prow, pcol are the row and col of the current process in the process grid
+	blacs_get_(&i_neg_one, &i_zero, &ictxt);
+	blacs_gridinit_(&ictxt, "R", &nprow, &npcol);
+	blacs_gridinfo_(&ictxt, &nprow, &npcol, &prow, &pcol); //prow, pcol are the row and col of the current process in the process grid
 
 	if(prow == 0 && pcol == 0){
 		A = malloc(M*N*sizeof(double));
@@ -213,7 +213,7 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 
 	//Initialize descriptors of A and A_distr
 	lld = max(numroc_(&N, &N, &prow, &i_zero, &nprow), 1); //TODO: the numroc_ call here might not have the right input arguments
-	descinit_(descA, &M, &N, &M, &N, &i_zero, &ictxt, &lld, &info);
+	descinit_(descA, &M, &N, &M, &N, &i_zero, &i_zero, &ictxt, &lld, &info);
 	lld_distr = max(mp, 1);
 	descinit_(descA_distr, &M, &N, &mb, &nb, &i_zero, &i_zero, &ictxt, &lld_distr, &info);
 
@@ -234,8 +234,8 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	}
 
 	//Exit process grid. This also finalizes MPI
-	Cblacs_gridexit_(&ictxt);
-	Cblacs_exit_(&i_zero);
+	blacs_gridexit_(&ictxt);
+	blacs_exit_(&i_zero);
 
 }
 

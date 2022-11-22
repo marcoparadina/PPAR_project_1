@@ -13,13 +13,13 @@
 #define CSRC_ 8
 #define LLD_ 9
 
-extern void Cblacs_get(int icontxt, int what, int *val);
-extern void Cblacs_pinfo(int * rank, int * nprocs);
-extern void Cblacs_setup(int * rank, int * nprocs);
-extern void Cblacs_gridinit(int * ictx, const char * order, int nprow, int npcol);
-extern void Cblacs_gridinfo(int ictx, int * nprow, int * npcol, int * myrow, int * mycol);
-extern void Cblacs_gridexit( int ictx );
-extern void Cblacs_exit( int doneflag );
+extern void blacs_get_(int icontxt, int what, int *val);
+extern void blacs_pinfo_(int * rank, int * nprocs);
+extern void blacs_setup_(int * rank, int * nprocs);
+extern void blacs_gridinit_(int * ictx, const char * order, int nprow, int npcol);
+extern void blacs_gridinfo_(int ictx, int * nprow, int * npcol, int * myrow, int * mycol);
+extern void blacs_gridexit_( int ictx );
+extern void blacs_exit_( int doneflag );
 
 int numroc_(int* N, int* NB, int* IPROC, int *ISRCPROC, int* NPROCS );
 int indxg2p_( int* INDXGLOB, int* NB, int* IPROC, int* ISRCPROC, int* NPROCS  );
