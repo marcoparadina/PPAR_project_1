@@ -96,9 +96,9 @@ void load_data_points(const char *filename, int npoint, struct data_points *self
 	step = fmax(step,1);
 	printf("nmax/npoint = step : %d / %d = %d \n",nmax, npoint, step);
 	
-	for (int i = 0; i < nmax; i+= step) {
+	for (int i = 0; i/step < npoint; i+= step) {
 		printf("here is i : %d\n",i);
-		int k = fscanf(f, "%lg %lg %lg", &self->lambda[i], &self->phi[i], &self->V[i]);
+		int k = fscanf(f, "%lg %lg %lg", &self->lambda[i/step], &self->phi[i/step], &self->V[i/step]);
 		if (k == EOF) {
 			if (ferror(f))
 				err(1, "read error");
