@@ -6,7 +6,14 @@
 #include <err.h>
 #include "harmonics.h"
 #include <mpi.h>
-#include <scalapack.h>  //not sure this is the right way to include scalapack library
+
+//#include <scalapack.h>  //not suree how to include scalapack library
+
+extern void blacs_get(int icontxt, int what, int *val);
+extern void blacs_pinfo(int * rank, int * nprocs);
+extern void blacs_gridinit(int * ictx, const char * order, int nprow, int npcol);
+extern void blacs_gridinfo(int ictx, int * nprow, int * npcol, int * myrow, int * mycol);
+
 
 int lmax = -1;
 int npoint;
@@ -166,7 +173,6 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 
     //used for MPI init
     int rank=0, nprocs=0;
-    int myrank_mpi, nprocs_mpi;
     //Used for BLACS grid
     int nprow=2, npcol=2, myrow=-1, mycol=-1;
     //dimension for global matrix, Row and col blocking params
@@ -177,8 +183,6 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
     int mp, nq, lld_distr;
     double *A_distr;
     double *WORK;
-    //counters, seeds
-    int i=0, itemp, seed;
     // Input your parameters: m, n - matrix dimensions, mb, nb - blocking parameters,
     // nprow, npcol - grid dimensions
     //Want 2x2 grid, will change in future
@@ -197,15 +201,18 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
     // Part with invoking of ScaLAPACK routines. Initialize process grid, first
 
     //Cblacs routines
-    Cblacs_pinfo( &rank, &nprocs ) ;
-    Cblacs_get(&i_zero, &i_zero, &ictxt );
-    Cblacs_gridinit( &ictxt, "Row", nprow, npcol );
-    Cblacs_gridinfo( ictxt, &nprow, &npcol, &myrow, &mycol );
+    blacs_pinfo( &rank, &nprocs ) ;
+    blacs_get(&i_zero, &i_zero, &ictxt );
+    blacs_gridinit( &ictxt, "Row", nprow, npcol );
+    blacs_gridinfo( ictxt, &nprow, &npcol, &myrow, &mycol );
 
+	double *A;
+	A = NULL;
     if(myrow == 0 && mycol == 0){
-        A = malloc(M*N*sizeof(double));
+        
         A = A_input;
     }
+	
     mp = numroc_( &M, &mb, &myrow, &i_zero, &nprow);
     nq = numroc_( &N, &nb, &mycol, &i_zero, &npcol );
 
@@ -216,7 +223,7 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
     // m, n, i.e. there is only one block - whole matrix A - which is located on process (0,0) )
     lld = max( numroc_( &N, &N, &myrow, &i_zero, &nprow ), 1 );
     descinit_( descA, &M, &N, &M, &N, &i_zero, &i_zero, &ictxt, &lld, &INFO );
-    lld_distr = MAX( mp, 1 );
+    lld_distr = max( mp, 1 );
     descinit_( descA_distr, &M, &N, &mb, &nb, &i_zero, &i_zero, &ictxt, &lld_distr, &INFO );
 
     // Call pdgeadd_ to distribute matrix (i.e. copy A into A_distr)

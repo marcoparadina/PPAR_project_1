@@ -4,6 +4,10 @@
 
 `model.c` solves the least square problem using the DGELS LAPACK function.
 
+`pmodel.c` is garbage
+
+`pmodel2.c` is an attempt to focus parallelization on QR decomposition with ScaLAPACK
+
 ## Compiling ##
 
 Just run the `Makefile` with the command `make`
