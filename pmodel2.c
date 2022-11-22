@@ -7,18 +7,19 @@
 #include "harmonics.h"
 #include <mpi.h>
 
-//#include <scalapack.h>  //not suree how to include scalapack library
-
-extern void blacs_get(int icontxt, int what, int *val);
-extern void blacs_pinfo(int * rank, int * nprocs);
-extern void blacs_gridinit(int * ictx, const char * order, int nprow, int npcol);
-extern void blacs_gridinfo(int ictx, int * nprow, int * npcol, int * myrow, int * mycol);
-
+//Dimensions of process grid
+#define NPROW 2
+#define NPCOL 2
 
 int lmax = -1;
 int npoint;
 char * data_filename;
 char * model_filename;
+
+int max(int a, int b){
+	if(a > b) return a;
+	return b;
+}
 
 void usage(char ** argv)
 {
@@ -171,33 +172,69 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
     const int i_zero = 0, i_one = 1, i_neg_one = -1;
     double zero=0.0E+0, one=1.0E+0;
 
-    //used for MPI init
-    int rank=0, nprocs=0;
-    //Used for BLACS grid
-    int nprow=2, npcol=2, myrow=-1, mycol=-1;
-    //dimension for global matrix, Row and col blocking params
-    int M, N, mb, nb, LWORK, INFO=0, ictxt=0;
-    int descA_distr[9],descA[9];
-    int lld=0;
-    //dimension for local matrix
-    int mp, nq, lld_distr;
-    double *A_distr;
-    double *WORK;
-    // Input your parameters: m, n - matrix dimensions, mb, nb - blocking parameters,
-    // nprow, npcol - grid dimensions
-    //Want 2x2 grid, will change in future
-    nprow = 2;
-    npcol = 2;
-    //Matrix Size
-    M=m;
-    N=n;
-    //Matrix blocks
-    mb=2;
-    nb=2;
-    //for local work
-    LWORK=nb*M;
+    
+    int rank, nprocs, M, N, mb, nb, nprow, npcol, ictxt, prow, pcol, mp, np, lld, lld_distr, info, descA[9], descA_distr[9], lwork;
+	double *work;
+	double *A;
+	double *A_distr;
 
+	//Dimensions of global matrix
+	M=m;
+	N=n;
 
+	//Dimensions of submatrices
+	mb = 2;
+	nb = 2;
+
+	//Dimensions of process grid
+	nprow = NPROW;
+	npcol = NPCOL;
+
+	//BLACS grid initialization
+	blacs_get(&i_neg_one, &i_zero, &ictxt);
+	blacs_gridinit_(&ictxt, "R", &nprow, &npcol);
+	blacs_gridinfo(&ictxt, &nprow, &npcol, &prow, &pcol); //prow, pcol are the row and col of the current process in the process grid
+
+	if(prow == 0 && pcol == 0){
+		A = malloc(M*N*sizeof(double));
+		A = A_input;
+	}
+	else{
+		A = NULL;
+	}
+
+	//Compute the size of the local part of the matrix
+	mp = numroc_(&M, &mb, &prow, &i_zero, &nprow);
+	np = numroc_(&N, &nb, &pcol, &i_zero, &npcol);
+	A_distr = malloc(mp*np*sizeof(double));
+
+	//Initialize descriptors of A and A_distr
+	lld = max(numroc_(&N, &N, &prow, &i_zero, &nprow), 1); //TODO: the numroc_ call here might not have the right input arguments
+	descinit_(descA, &M, &N, &M, &N, &i_zero, &ictxt, &lld, &info);
+	lld_distr = max(mp, 1);
+	descinit_(descA_distr, &M, &N, &mb, &nb, &i_zero, &i_zero, &ictxt, &lld_distr, &info);
+
+	//Distribute the matrix
+	pdgeadd_("N", &M, &N, &one, A, &i_one, &i_one, descA, &zero, A_distr, &i_one, &i_one, descA_distr);
+
+	//Scalapack routine call
+	lwork = -1;
+	pdgeqrf_(&M, &N, A_distr, &i_one, &i_one, descA_distr, tau, work, &lwork, &info);
+
+	//Copy the result in the global matrix
+	pdgeadd_("N", &M, &N, &one, A_distr, &i_one, &i_one, descA_distr, &zero, A, &i_one, &i_one, descA);
+
+	free(A_distr);
+
+	if(prow == 0 && pcol == 0){
+		free(A);
+	}
+
+	//Exit process grid. This also finalizes MPI
+	blacs_gridexit_(&ictxt);
+	blacs_exit_(&i_zero);
+
+	/*
     // Part with invoking of ScaLAPACK routines. Initialize process grid, first
 
     //Cblacs routines
@@ -243,6 +280,7 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 
     blacs_gridexit_( &ictxt );
     blacs_exit_( &i_zero );
+	*/
 
     /*
     for (int i = 0; i < n; ++i) {
