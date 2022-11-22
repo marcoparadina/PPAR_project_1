@@ -172,12 +172,12 @@ void multiply_householder(int m, int n, double *v, double tau, double *c, int ld
 void QR_factorize(int m, int n, double * A_input, double * tau){
 
     //Useful constants
-    const int i_zero = 0, i_one = 1, i_neg_one = -1;
+    int i_zero = 0, i_one = 1, i_neg_one = -1;
     double zero=0.0E+0, one=1.0E+0;
 
     
     int M, N, mb, nb, nprow, npcol, ictxt, prow, pcol, mp, np, lld, lld_distr, info, descA[9], descA_distr[9], lwork;
-	double *work;
+	double *work = NULL;
 	double *A;
 	double *A_distr;
 
@@ -194,9 +194,9 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	npcol = NPCOL;
 
 	//Cblacs grid initialization
-	blacs_get_(&i_neg_one, &i_zero, &ictxt);
-	blacs_gridinit_(&ictxt, "R", &nprow, &npcol);
-	blacs_gridinfo_(&ictxt, &nprow, &npcol, &prow, &pcol); //prow, pcol are the row and col of the current process in the process grid
+	Cblacs_get(i_neg_one, i_zero, &ictxt);
+	Cblacs_gridinit(&ictxt, "R", nprow, npcol);
+	Cblacs_gridinfo(ictxt, &nprow, &npcol, &prow, &pcol); //prow, pcol are the row and col of the current process in the process grid
 
 	if(prow == 0 && pcol == 0){
 		A = malloc(M*N*sizeof(double));
@@ -234,8 +234,8 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	}
 
 	//Exit process grid. This also finalizes MPI
-	blacs_gridexit_(&ictxt);
-	blacs_exit_(&i_zero);
+	Cblacs_gridexit(ictxt);
+	Cblacs_exit(i_zero);
 
 }
 

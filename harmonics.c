@@ -6,7 +6,6 @@
 #include <sys/time.h>
 #include <inttypes.h>
 #include <string.h>
-
 #include "harmonics.h"
 
 double wtime()

@@ -5,15 +5,15 @@ CFLAGS = -g -Wall -O3
 CFLAGS += $(shell pkg-config --cflags scalapack-openmpi)
 LDLIBS += $(shell pkg-config --libs scalapack-openmpi)
 
-ALL: model_old validate
+ALL: pmodel2 validate
 
-model_old: model_old.o harmonics.o
+pmodel2: pmodel2.o harmonics.o	
 validate: validate.o harmonics.o 
-model_old.o: harmonics.h
+pmodel2.o: harmonics.h
 quality.o: harmonics.h
 harmonics.o: harmonics.h
 
 .PHONY: clean
 
 clean:
-	rm -f model_old validate *.o
+	rm -f pmodel2 validate *.o
