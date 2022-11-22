@@ -6,6 +6,7 @@
 #include <sys/time.h>
 #include <inttypes.h>
 #include <string.h>
+
 #include "harmonics.h"
 
 double wtime()
@@ -93,21 +94,40 @@ void load_data_points(const char *filename, int npoint, struct data_points *self
 	
 	int step = floor(nmax/npoint);
 	step = fmax(step,1);
-	printf("nmax/npoint = step : %d / %d = %d \n",nmax, npoint, step);
+	printf("nmax/npoint= step : %d / %d = %d \n",nmax, npoint, step);
 	
-	for (int i = 0; i+step < npoint; i+= step) {
+	double t1, t2, t3;
+	
+	for (int i = 1; i < nmax; i++) {
 		//printf("here is i : %d\n",i);
-		int k = fscanf(f, "%lg %lg %lg", &self->lambda[i/step], &self->phi[i/step], &self->V[i/step]);
-		if (k == EOF) {
-			if (ferror(f))
-				err(1, "read error");
-			errx(1, "premature end-of-file after %d records", i);
+		if(i%step==0){
+			int k = fscanf(f, "%lg %lg %lg", &self->lambda[i/step], &self->phi[i/step], &self->V[i/step]);
+			
+			if (k == EOF) {
+				if (ferror(f))
+					err(1, "read error");
+				errx(1, "premature end-of-file after %d records", i);
+			}
+			if (k != 3){
+				//printf(" lambda : %lg \n",&self->lambda[i]);
+				//printf(" phi : %lg \n",&self->phi[i]);
+				//printf(" V : %lg \n",&self->V[i]);
+				errx(1, "parse error on line %d", i+1);}
 		}
-		if (k != 3){
-			//printf(" lambda : %lg \n",&self->lambda[i]);
-			//printf(" phi : %lg \n",&self->phi[i]);
-			//printf(" V : %lg \n",&self->V[i]);
-			errx(1, "parse error on line %d", i+1);}
+		else{
+			int k = fscanf(f,"%lg %lg %lg", &t1, &t2, &t3);
+			
+			if (k == EOF) {
+				if (ferror(f))
+					err(1, "read error");
+				errx(1, "premature end-of-file after %d records", i);
+			}
+			if (k != 3){
+				//printf(" lambda : %lg \n",&self->lambda[i]);
+				//printf(" phi : %lg \n",&self->phi[i]);
+				//printf(" V : %lg \n",&self->V[i]);
+				errx(1, "parse error on line %d", i+1);}
+		}
 	}
 	fclose(f);
 }
