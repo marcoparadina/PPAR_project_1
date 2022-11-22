@@ -17,12 +17,11 @@ int npoint;
 char * data_filename;
 char * model_filename;
 
-/*
-int max(int a, int b){
+
+int MAX(int a, int b){
 	if(a > b) return a;
 	return b;
 }
-*/
 
 void usage(char ** argv)
 {
@@ -67,11 +66,6 @@ void process_command_line_options(int argc, char ** argv)
 	/* missing required args? */
 	if (data_filename == NULL || model_filename == NULL || lmax < 0 || npoint <= 0)
 		usage(argv);
-}
-
-static int max(int a, int b){
-    if(a > b) return a;
-    return b;
 }
 
 /**************************** LINEAR ALGEBRA *********************************/
@@ -212,17 +206,20 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	A_distr = malloc(mp*np*sizeof(double));
 
 	//Initialize descriptors of A and A_distr
-	lld = max(numroc_(&N, &N, &prow, &i_zero, &nprow), 1); //TODO: the numroc_ call here might not have the right input arguments
+	lld = MAX(numroc_(&M, &M, &prow, &i_zero, &nprow), 1);
 	descinit_(descA, &M, &N, &M, &N, &i_zero, &i_zero, &ictxt, &lld, &info);
-	lld_distr = max(mp, 1);
+	lld_distr = MAX(mp, 1);
 	descinit_(descA_distr, &M, &N, &mb, &nb, &i_zero, &i_zero, &ictxt, &lld_distr, &info);
 
 	//Distribute the matrix
 	pdgeadd_("N", &M, &N, &one, A, &i_one, &i_one, descA, &zero, A_distr, &i_one, &i_one, descA_distr);
 
-	//Scalapack routine call
+	//Scalapack routine call: the first call is a query to get the correct value for lwork, the second is the call that does the actual work
 	lwork = -1;
 	pdgeqrf_(&M, &N, A_distr, &i_one, &i_one, descA_distr, tau, work, &lwork, &info);
+	lwork = work[0];
+	pdgeqrf_(&M, &N, A_distr, &i_one, &i_one, descA_distr, tau, work, &lwork, &info);
+
 
 	//Copy the result in the global matrix
 	pdgeadd_("N", &M, &N, &one, A_distr, &i_one, &i_one, descA_distr, &zero, A, &i_one, &i_one, descA);
@@ -230,7 +227,10 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	free(A_distr);
 
 	if(prow == 0 && pcol == 0){
+		for(int i = 0; i<M*N; i++){
+		A_input[i] = A[i];
 		free(A);
+	}
 	}
 
 	//Exit process grid. This also finalizes MPI
