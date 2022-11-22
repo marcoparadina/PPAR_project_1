@@ -1,5 +1,5 @@
 CC = mpicc
-LDLIBS = -lm -llapack -lblas -llibscalapack
+LDLIBS = -lm -llapack -lblas -lscalapack-openmpi
 CFLAGS = -g -Wall -O3 
 
 ALL: pmodel2 validate
