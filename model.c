@@ -7,7 +7,11 @@
 #include <lapack.h>
 #include "harmonics.h"
 
-
+/* Signatures of the BLACS and SCALAPACK functions */
+extern void Cblacs_get(int icontxt, int what, int *val);
+extern void Cblacs_pinfo(int * rank, int * nprocs);
+extern void Cblacs_gridinit(int * ictx, const char * order, int nprow, int npcol);
+extern void Cblacs_gridinfo(int ictx, int * nprow, int * npcol, int * myrow, int * mycol);
 extern void dgels(char * trans, int * m, int * n, int * nrhs, double * A, int * lda, double * B, int * ldb, double * work, int * lwork, int * info);
 
 int lmax = -1;
@@ -60,8 +64,8 @@ void process_command_line_options(int argc, char ** argv)
 		usage(argv);
 }
 
-int main(int argc, char ** argv)
-{
+int main(int argc, char ** argv){
+
 	process_command_line_options(argc, argv);
 
 	/* preparations and memory allocation */
