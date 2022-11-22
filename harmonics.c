@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <sys/time.h>
 #include <inttypes.h>
+#include <string.h>
 
 #include "harmonics.h"
 
@@ -77,15 +78,37 @@ void load_data_points(const char *filename, int npoint, struct data_points *self
 	if (f == NULL)
 		err(1, "cannot open %s", filename);
 	
-	for (int i = 0; i < npoint; i++) {
+	int nmax=0;
+	if(strchr(filename,'s')!=NULL){//small
+		nmax=64800;
+	}
+	else if(strchr(filename,'d')!=NULL){//medium
+		nmax=583200;
+	}
+	else if(strchr(filename,'h')!=NULL){//high
+		nmax=6480000;
+	}
+	else if(strchr(filename,'t')!=NULL){//ultra
+			nmax=233280000;
+	}
+	
+	int step = floor(nmax/npoint);
+	step = fmax(step,1);
+	printf("nmax/npoint = step : %d / %d = %d \n",nmax, npoint, step);
+	
+	for (int i = 0; i < nmax; i+= step) {
+		printf("here is i : %d\n",i);
 		int k = fscanf(f, "%lg %lg %lg", &self->lambda[i], &self->phi[i], &self->V[i]);
 		if (k == EOF) {
 			if (ferror(f))
 				err(1, "read error");
 			errx(1, "premature end-of-file after %d records", i);
 		}
-		if (k != 3)
-			errx(1, "parse error on line %d", i+1);
+		if (k != 3){
+			//printf(" lambda : %lg \n",&self->lambda[i]);
+			//printf(" phi : %lg \n",&self->phi[i]);
+			//printf(" V : %lg \n",&self->V[i]);
+			errx(1, "parse error on line %d", i+1);}
 	}
 	fclose(f);
 }
