@@ -10,7 +10,7 @@
 
 //Dimensions of process grid
 #define NPROW 2
-#define NPCOL 2
+#define NPCOL 2 
 
 int lmax = -1;
 int npoint;
@@ -23,6 +23,10 @@ int MAX(int a, int b){
 		return a;
 	}
 	return b;
+}
+
+int MOD(int a, int b){
+	return a%b;	
 }
 
 void usage(char ** argv)
@@ -172,8 +176,8 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
     int i_zero = 0, i_one = 1;
 
     
-    int M, N, mb, nb, nprow, npcol, ictxt, prow, pcol, mp, np, lld, lld_distr, info, descA[9], descA_distr[9], lwork, nprocs, rank;
-	double *work = NULL;
+    int M, N, mb, nb, nprow, npcol, sysctx, prow, pcol, mp, nq, lld, lld_distr, info, descA[9], descA_distr[9], lwork;
+	//double *work;
 	double *A;
 	double *A_distr;
 
@@ -190,58 +194,83 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	npcol = NPCOL;
 
 	//Cblacs grid initialization
-	Cblacs_get(i_zero, i_zero, &ictxt);
-	Cblacs_gridinit(&ictxt, "Row-Major", nprow, npcol);
-	Cblacs_gridinfo(ictxt, &nprow, &npcol, &prow, &pcol); //prow, pcol are the row and col of the current process in the process grid
+	Cblacs_get(i_zero, i_zero, &sysctx);
+	int ctx = sysctx;
+	Cblacs_gridinit(&ctx, "Row-Major", nprow, npcol);
+	Cblacs_gridinfo(ctx, &nprow, &npcol, &prow, &pcol); //prow, pcol are the row and col of the current process in the process grid
 
 	if(prow == 0 && pcol == 0){
 		A = malloc(M*N*sizeof(double)); //At the end of execution the result matrix will be here
-		A = A_input;
+		for(int i = 0; i<(M*N); i++){
+			A[i] = A_input[i];
+		}
 	}
 	else{
 		A = NULL; //if I'm not process (0,0) I'm not using this matrix
 	}
 
-	//Compute the size of the local part of the matrix
-	Cblacs_pinfo(&rank, &nprocs); //nprocs == nprow*npcol
-	mp = numroc_(&M, &mb, &prow, &i_zero, &nprocs);
-	np = numroc_(&N, &nb, &pcol, &i_zero, &nprocs);
-	A_distr = malloc(mp*np*sizeof(double));
+	//Compute the size of the local part of the matrix	
+	mp = numroc_(&M, &mb, &prow, &i_zero, &nprow);
+	nq = numroc_(&N, &nb, &pcol, &i_zero, &npcol);
+	A_distr = malloc(mb*nq*sizeof(double));
 
 	//Initialize descriptors of A and A_distr
 	lld = MAX( numroc_( &M, &M, &prow, &i_zero, &nprow ), 1 );
     lld_distr = MAX( mp, 1 );
-	descinit_(descA, &M, &N, &M, &N, &i_zero, &i_zero, &ictxt, &lld, &info);
-	descinit_(descA_distr, &M, &N, &mb, &nb, &i_zero, &i_zero, &ictxt, &lld_distr, &info); //parameters 5,6 don't really make sense to me but they seem to work
+	descinit_(descA, &M, &N, &M, &N, &i_zero, &i_zero, &ctx, &lld, &info);
+	descinit_(descA_distr, &M, &N, &mb, &nb, &i_zero, &i_zero, &ctx, &lld_distr, &info); //parameters 5,6 don't really make sense to me but they seem to work
 
 	//Distribute the matrix
 	//TODELETE pdgeadd_("N", &M, &N, &one, A, &i_one, &i_one, descA, &zero, A_distr, &i_one, &i_one, descA_distr);
-	pdgemr2d_(&mp, &np, A, &i_one, &i_one, descA, A_distr, &i_one, &i_one, descA_distr, &ictxt); //parameters 3,4 don't really make sense to me but they seem to work
+	pdgemr2d_(&mp, &nq, A, &i_one, &i_one, descA, A_distr, &i_one, &i_one, descA_distr, &ctx); //parameters 3,4 don't really make sense to me but they seem to work
 
 	//Scalapack routine call: the first call is a query to get the correct value for lwork, the second is the call that does the actual work
-	lwork = -1;
-	pdgeqrf_(&M, &N, A_distr, &i_one, &i_one, descA_distr, tau, work, &lwork, &info);
-	lwork = work[0];
-	pdgeqrf_(&M, &N, A_distr, &i_one, &i_one, descA_distr, tau, work, &lwork, &info);
+	//pdgeqrf_(&M, &N, A_distr, &i_one, &i_one, descA_distr, tau, work, &lwork, &info);
+	/*
+	*		   LWORK >= NB_A * ( Mp0 + Nq0 + NB_A ), where
+	*
+	*          IROFF = MOD( IA-1, MB_A ), ICOFF = MOD( JA-1, NB_A ),
+	*          IAROW = INDXG2P( IA, MB_A, MYROW, RSRC_A, NPROW ),
+	*          IACOL = INDXG2P( JA, NB_A, MYCOL, CSRC_A, NPCOL ),
+	*          Mp0   = NUMROC( M+IROFF, MB_A, MYROW, IAROW, NPROW ),
+	*          Nq0   = NUMROC( N+ICOFF, NB_A, MYCOL, IACOL, NPCOL ),
+	*
+	*          and NUMROC, INDXG2P are ScaLAPACK tool functions;
+	*          MYROW, MYCOL, NPROW and NPCOL can be determined by calling
+	*          the subroutine BLACS_GRIDINFO.
+	*/
+	int ia = i_one, ja = i_one;
+	int iroff = MOD(ia-1, mb);
+	int icoff = MOD(ja-1, nb);	
+	int iarow = indxg2p_(&ia, &mb, &prow, &i_zero, &nprow);
+	int iacol = indxg2p_(&ja, &nb, &pcol, &i_zero, &npcol);
+	//Arguments for mpzero
+	int first_par_mpzero = mp + iroff;
+	int first_par_nqzero = nq + icoff;
+	int mpzero = numroc_(&first_par_mpzero, &mb, &prow, &iarow, &nprow);
+	int nqzero = numroc_(&first_par_nqzero, &nb, &pcol, &iacol, &npcol);
+	lwork = nb * (mpzero + nqzero + nb);
+	double work[lwork];
+	pdgeqrf_(&M, &N, A_distr, &ia, &ja, descA_distr, tau, work, &lwork, &info);
 	//void pdgeqrf_(int* M, int *N, double* A, int* IA, int *JA, int* DESCA, double *TAU, double *WORK, int* LWORK, int *INFO);
 
 
 	//Copy the result into the global matrix
 	//TODELETE pdgeadd_("N", &M, &N, &one, A_distr, &i_one, &i_one, descA_distr, &zero, A, &i_one, &i_one, descA);
-	pdgemr2d_(&mp, &np, A_distr, &i_one, &i_one, descA_distr, A, &i_one, &i_one, descA, &ictxt); //parameters 3,4 don't really make sense to me but they seem to work
+	pdgemr2d_(&mp, &nq, A_distr, &i_one, &i_one, descA_distr, A, &i_one, &i_one, descA, &ctx); //parameters 3,4 don't really make sense to me but they seem to work
 
 
 	free(A_distr);
 
 	if(prow == 0 && pcol == 0){
 		for(int i = 0; i<M*N; i++){
-		A_input[i] = A[i];
-		free(A); //useless but it's good practice
-	}
+			A_input[i] = A[i];
+			free(A); //useless but it's good practice
+		}
 	}
 
 	//Exit process grid. This also finalizes MPI
-	Cblacs_gridexit(ictxt);
+	Cblacs_gridexit(ctx);
 	Cblacs_exit(i_zero);
 
 }
