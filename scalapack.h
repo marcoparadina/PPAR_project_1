@@ -1,6 +1,7 @@
 #ifndef _SCALAPACK_H
 #define _SCALAPACK_H
 
+/*
 #define BLOCK_CYCLIC_2D 1
 #define DLEN_ 9 
 #define DTYPE_ 1
@@ -12,6 +13,7 @@
 #define RSRC_ 7 
 #define CSRC_ 8
 #define LLD_ 9
+*/
 
 extern void Cblacs_get(int icontxt, int what, int *val);
 extern void Cblacs_pinfo(int * rank, int * nprocs);

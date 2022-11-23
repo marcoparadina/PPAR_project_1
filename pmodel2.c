@@ -170,7 +170,7 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
     double zero=0.0E+0, one=1.0E+0;
 
     
-    int M, N, mb, nb, nprow, npcol, ictxt, prow, pcol, mp, np, lld, lld_distr, info, descA[9], descA_distr[9], lwork;
+    int M, N, mb, nb, nprow, npcol, ictxt, prow, pcol, mp, np, lld, lld_distr, info, descA[9], descA_distr[9], lwork, nprocs, rank;
 	double *work = NULL;
 	double *A;
 	double *A_distr;
@@ -188,48 +188,53 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	npcol = NPCOL;
 
 	//Cblacs grid initialization
-	Cblacs_get(i_neg_one, i_zero, &ictxt);
+	Cblacs_get(i_zero, i_zero, &ictxt);
 	Cblacs_gridinit(&ictxt, "R", nprow, npcol);
 	Cblacs_gridinfo(ictxt, &nprow, &npcol, &prow, &pcol); //prow, pcol are the row and col of the current process in the process grid
 
 	if(prow == 0 && pcol == 0){
-		A = malloc(M*N*sizeof(double));
+		A = malloc(M*N*sizeof(double)); //At the end of execution the result matrix will be here
 		A = A_input;
 	}
 	else{
-		A = NULL;
+		A = NULL; //if I'm not process (0,0) I'm not using this matrix
 	}
 
 	//Compute the size of the local part of the matrix
-	mp = numroc_(&M, &mb, &prow, &i_zero, &nprow);
-	np = numroc_(&N, &nb, &pcol, &i_zero, &npcol);
+	Cblacs_pinfo(&rank, &nprocs); //nprocs == nprow*npcol
+	mp = numroc_(&M, &mb, &prow, &i_zero, &nprocs);
+	np = numroc_(&N, &nb, &pcol, &i_zero, &nprocs);
 	A_distr = malloc(mp*np*sizeof(double));
 
 	//Initialize descriptors of A and A_distr
 	lld = MAX(numroc_(&M, &M, &prow, &i_zero, &nprow), 1);
 	descinit_(descA, &M, &N, &M, &N, &i_zero, &i_zero, &ictxt, &lld, &info);
 	lld_distr = MAX(mp, 1);
-	descinit_(descA_distr, &M, &N, &mb, &nb, &i_zero, &i_zero, &ictxt, &lld_distr, &info);
+	descinit_(descA_distr, &M, &N, &mb, &nb, &i_zero, &i_zero, &ictxt, &lld_distr, &info); //parameters 5,6 don't really make sense to me but they seem to work
 
 	//Distribute the matrix
-	pdgeadd_("N", &M, &N, &one, A, &i_one, &i_one, descA, &zero, A_distr, &i_one, &i_one, descA_distr);
+	//TODELETE pdgeadd_("N", &M, &N, &one, A, &i_one, &i_one, descA, &zero, A_distr, &i_one, &i_one, descA_distr);
+	pdgemr2d_(&mp, &np, A, &i_one, &i_one, descA, A_distr, &i_one, &i_one, descA_distr, &ictxt); //parameters 3,4 don't really make sense to me but they seem to work
 
 	//Scalapack routine call: the first call is a query to get the correct value for lwork, the second is the call that does the actual work
 	lwork = -1;
 	pdgeqrf_(&M, &N, A_distr, &i_one, &i_one, descA_distr, tau, work, &lwork, &info);
 	lwork = work[0];
 	pdgeqrf_(&M, &N, A_distr, &i_one, &i_one, descA_distr, tau, work, &lwork, &info);
+	//void pdgeqrf_(int* M, int *N, double* A, int* IA, int *JA, int* DESCA, double *TAU, double *WORK, int* LWORK, int *INFO);
 
 
-	//Copy the result in the global matrix
-	pdgeadd_("N", &M, &N, &one, A_distr, &i_one, &i_one, descA_distr, &zero, A, &i_one, &i_one, descA);
+	//Copy the result into the global matrix
+	//TODELETE pdgeadd_("N", &M, &N, &one, A_distr, &i_one, &i_one, descA_distr, &zero, A, &i_one, &i_one, descA);
+	pdgemr2d_(&mp, &np, A_distr, &i_one, &i_one, descA_distr, A, &i_one, &i_one, descA, &ictxt); //parameters 3,4 don't really make sense to me but they seem to work
+
 
 	free(A_distr);
 
 	if(prow == 0 && pcol == 0){
 		for(int i = 0; i<M*N; i++){
 		A_input[i] = A[i];
-		free(A);
+		free(A); //useless but it's good practice
 	}
 	}
 
