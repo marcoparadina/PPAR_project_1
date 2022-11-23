@@ -19,7 +19,9 @@ char * model_filename;
 
 
 int MAX(int a, int b){
-	if(a > b) return a;
+	if(a > b){
+		return a;
+	}
 	return b;
 }
 
@@ -165,9 +167,9 @@ void multiply_householder(int m, int n, double *v, double tau, double *c, int ld
  */
 void QR_factorize(int m, int n, double * A_input, double * tau){
 
+	MPI_Init(NULL, NULL);
     //Useful constants
-    int i_zero = 0, i_one = 1, i_neg_one = -1;
-    double zero=0.0E+0, one=1.0E+0;
+    int i_zero = 0, i_one = 1;
 
     
     int M, N, mb, nb, nprow, npcol, ictxt, prow, pcol, mp, np, lld, lld_distr, info, descA[9], descA_distr[9], lwork, nprocs, rank;
@@ -180,8 +182,8 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	N=n;
 
 	//Dimensions of submatrices
-	mb = 2;
-	nb = 2;
+	mb = 10;
+	nb = 10;
 
 	//Dimensions of process grid
 	nprow = NPROW;
@@ -189,7 +191,7 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 
 	//Cblacs grid initialization
 	Cblacs_get(i_zero, i_zero, &ictxt);
-	Cblacs_gridinit(&ictxt, "R", nprow, npcol);
+	Cblacs_gridinit(&ictxt, "Row-Major", nprow, npcol);
 	Cblacs_gridinfo(ictxt, &nprow, &npcol, &prow, &pcol); //prow, pcol are the row and col of the current process in the process grid
 
 	if(prow == 0 && pcol == 0){
@@ -207,9 +209,9 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	A_distr = malloc(mp*np*sizeof(double));
 
 	//Initialize descriptors of A and A_distr
-	lld = MAX(numroc_(&M, &M, &prow, &i_zero, &nprow), 1);
+	lld = MAX( numroc_( &M, &M, &prow, &i_zero, &nprow ), 1 );
+    lld_distr = MAX( mp, 1 );
 	descinit_(descA, &M, &N, &M, &N, &i_zero, &i_zero, &ictxt, &lld, &info);
-	lld_distr = MAX(mp, 1);
 	descinit_(descA_distr, &M, &N, &mb, &nb, &i_zero, &i_zero, &ictxt, &lld_distr, &info); //parameters 5,6 don't really make sense to me but they seem to work
 
 	//Distribute the matrix
