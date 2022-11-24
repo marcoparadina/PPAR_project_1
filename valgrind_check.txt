@@ -1,0 +1,2 @@
+mpirun -n 1 valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=valgrind-out.txt ./pmodel2 --data ETOPO1_small.csv --model out.csv --npoint 100 --lmax 9
+

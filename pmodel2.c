@@ -26,7 +26,7 @@ int MAX(int a, int b){
 }
 
 int MOD(int a, int b){
-	return a%b;	
+	return (a%b);	
 }
 
 void usage(char ** argv)
@@ -185,7 +185,7 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	M=m;
 	N=n;
 
-	//Dimensions of submatrices
+	//Dimensions of blocks
 	mb = 10;
 	nb = 10;
 
@@ -199,8 +199,11 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	Cblacs_gridinit(&ctx, "Row-Major", nprow, npcol);
 	Cblacs_gridinfo(ctx, &nprow, &npcol, &prow, &pcol); //prow, pcol are the row and col of the current process in the process grid
 
-	if(prow == 0 && pcol == 0){
+	if((prow == 0) && (pcol == 0)){
 		A = malloc(M*N*sizeof(double)); //At the end of execution the result matrix will be here
+		if(A==NULL){
+			err(1, "Couldn't allocate A\n");
+		}
 		for(int i = 0; i<(M*N); i++){
 			A[i] = A_input[i];
 		}
@@ -212,7 +215,11 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	//Compute the size of the local part of the matrix	
 	mp = numroc_(&M, &mb, &prow, &i_zero, &nprow);
 	nq = numroc_(&N, &nb, &pcol, &i_zero, &npcol);
-	A_distr = malloc(mb*nq*sizeof(double));
+	A_distr = malloc(mp*nq*sizeof(double));
+	if(A_distr == NULL){
+		err(1, "Couldn't allocate A_distr\n");
+	}
+	
 
 	//Initialize descriptors of A and A_distr
 	lld = MAX( numroc_( &M, &M, &prow, &i_zero, &nprow ), 1 );
@@ -221,11 +228,11 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	descinit_(descA_distr, &M, &N, &mb, &nb, &i_zero, &i_zero, &ctx, &lld_distr, &info); //parameters 5,6 don't really make sense to me but they seem to work
 
 	//Distribute the matrix
-	//TODELETE pdgeadd_("N", &M, &N, &one, A, &i_one, &i_one, descA, &zero, A_distr, &i_one, &i_one, descA_distr);
+	//MEMORY LEAK: invalid write of size 8
 	pdgemr2d_(&mp, &nq, A, &i_one, &i_one, descA, A_distr, &i_one, &i_one, descA_distr, &ctx); //parameters 3,4 don't really make sense to me but they seem to work
 
-	//Scalapack routine call: the first call is a query to get the correct value for lwork, the second is the call that does the actual work
-	//pdgeqrf_(&M, &N, A_distr, &i_one, &i_one, descA_distr, tau, work, &lwork, &info);
+	
+	//TODELETE pdgeqrf_(&M, &N, A_distr, &i_one, &i_one, descA_distr, tau, work, &lwork, &info);
 	/*
 	*		   LWORK >= NB_A * ( Mp0 + Nq0 + NB_A ), where
 	*
@@ -239,39 +246,50 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	*          MYROW, MYCOL, NPROW and NPCOL can be determined by calling
 	*          the subroutine BLACS_GRIDINFO.
 	*/
-	int ia = i_one, ja = i_one;
+
+	//Compute optimal value for lwork, to be used in the scalapack routine call
+	/*
+	int ia = i_one; 
+	int ja = i_one;
 	int iroff = MOD(ia-1, mb);
 	int icoff = MOD(ja-1, nb);	
 	int iarow = indxg2p_(&ia, &mb, &prow, &i_zero, &nprow);
-	int iacol = indxg2p_(&ja, &nb, &pcol, &i_zero, &npcol);
-	//Arguments for mpzero
-	int first_par_mpzero = mp + iroff;
-	int first_par_nqzero = nq + icoff;
+	int iacol = indxg2p_(&ja, &nb, &pcol, &i_zero, &npcol);	
+	int first_par_mpzero = mp + iroff;	//First argument for mpzero
+	int first_par_nqzero = nq + icoff;	//First argument for nqzero
 	int mpzero = numroc_(&first_par_mpzero, &mb, &prow, &iarow, &nprow);
 	int nqzero = numroc_(&first_par_nqzero, &nb, &pcol, &iacol, &npcol);
 	lwork = nb * (mpzero + nqzero + nb);
+	*/
+	int ia = i_one; 
+	int ja = i_one;
+	double temp_work[1];
+	lwork=-1;
+
+	//Scalapack routine call
+	//The first call is a query to get the optimal value for lwork
+	pdgeqrf_(&M, &N, A_distr, &ia, &ja, descA_distr, tau, temp_work, &lwork, &info);
 	double work[lwork];
 	pdgeqrf_(&M, &N, A_distr, &ia, &ja, descA_distr, tau, work, &lwork, &info);
-	//void pdgeqrf_(int* M, int *N, double* A, int* IA, int *JA, int* DESCA, double *TAU, double *WORK, int* LWORK, int *INFO);
-
+	
 
 	//Copy the result into the global matrix
-	//TODELETE pdgeadd_("N", &M, &N, &one, A_distr, &i_one, &i_one, descA_distr, &zero, A, &i_one, &i_one, descA);
 	pdgemr2d_(&mp, &nq, A_distr, &i_one, &i_one, descA_distr, A, &i_one, &i_one, descA, &ctx); //parameters 3,4 don't really make sense to me but they seem to work
 
 
 	free(A_distr);
 
-	if(prow == 0 && pcol == 0){
+	if((prow == 0) && (pcol == 0)){
 		for(int i = 0; i<M*N; i++){
 			A_input[i] = A[i];
-			free(A); //useless but it's good practice
 		}
+		free(A);
 	}
 
-	//Exit process grid. This also finalizes MPI
+	//Exit process grid. This also finalizes MPI	
 	Cblacs_gridexit(ctx);
 	Cblacs_exit(i_zero);
+	//MPI_Finalize();
 
 }
 

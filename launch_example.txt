@@ -1,0 +1,1 @@
+mpirun -n 4 ./pmodel2 --data ETOPO1_small.csv --model out.csv --npoint 100 --lmax 9
