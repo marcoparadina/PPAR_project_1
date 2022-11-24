@@ -171,13 +171,13 @@ void multiply_householder(int m, int n, double *v, double tau, double *c, int ld
  */
 void QR_factorize(int m, int n, double * A_input, double * tau){
 
+	//TODO: handle tau vector, gather its modifications into the final result in process (0,0)
 	MPI_Init(NULL, NULL);
     //Useful constants
     int i_zero = 0, i_one = 1;
 
     
     int M, N, mb, nb, nprow, npcol, sysctx, prow, pcol, mp, nq, lld, lld_distr, info, descA[9], descA_distr[9], lwork;
-	//double *work;
 	double *A;
 	double *A_distr;
 
@@ -228,11 +228,9 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	descinit_(descA_distr, &M, &N, &mb, &nb, &i_zero, &i_zero, &ctx, &lld_distr, &info); //parameters 5,6 don't really make sense to me but they seem to work
 
 	//Distribute the matrix
-	//MEMORY LEAK: invalid write of size 8
 	pdgemr2d_(&mp, &nq, A, &i_one, &i_one, descA, A_distr, &i_one, &i_one, descA_distr, &ctx); //parameters 3,4 don't really make sense to me but they seem to work
 
-	
-	//TODELETE pdgeqrf_(&M, &N, A_distr, &i_one, &i_one, descA_distr, tau, work, &lwork, &info);
+	//Docs from netlib to compute lwork
 	/*
 	*		   LWORK >= NB_A * ( Mp0 + Nq0 + NB_A ), where
 	*
