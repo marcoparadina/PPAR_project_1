@@ -94,14 +94,12 @@ void load_data_points(const char *filename, int npoint, struct data_points *self
 
 	int step = floor(nmax/npoint);
 	step = fmax(step,1);
-	printf("nmax/npoint = step : %d / %d = %d \n",nmax, npoint, step);
+	//printf("nmax/npoint = step : %d / %d = %d \n",nmax, npoint, step);
 
 	double t1, t2, t3;
 
 	for (int i = 1; i <= step*npoint; i++) {
-		//printf("here is i : %d\n",i);
 		if(i%step==0){
-      printf(" %d steps completed\n",i/step);
 			int k = fscanf(f, "%lg %lg %lg", &self->lambda[i/step], &self->phi[i/step], &self->V[i/step]);
 
 			if (k == EOF) {
@@ -110,9 +108,6 @@ void load_data_points(const char *filename, int npoint, struct data_points *self
 				errx(1, "premature end-of-file after %d records", i);
 			}
 			if (k != 3){
-				//printf(" lambda : %lg \n",&self->lambda[i]);
-				//printf(" phi : %lg \n",&self->phi[i]);
-				//printf(" V : %lg \n",&self->V[i]);
 				errx(1, "parse error on line %d", i+1);}
 		}
 		else{
@@ -124,9 +119,7 @@ void load_data_points(const char *filename, int npoint, struct data_points *self
 				errx(1, "premature end-of-file after %d records", i);
 			}
 			if (k != 3){
-				//printf(" lambda : %lg \n",&self->lambda[i]);
-				//printf(" phi : %lg \n",&self->phi[i]);
-				//printf(" V : %lg \n",&self->V[i]);
+
 				errx(1, "parse error on line %d", i+1);}
 		}
 	}
