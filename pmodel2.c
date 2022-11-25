@@ -9,8 +9,8 @@
 #include "scalapack.h"
 
 //Dimensions of process grid
-#define NPROW 2
-#define NPCOL 2 
+#define NPROW 1
+#define NPCOL 1
 
 int lmax = -1;
 int npoint;
@@ -169,17 +169,17 @@ void multiply_householder(int m, int n, double *v, double tau, double *c, int ld
  * where tau[i] is a real scalar, and v is a real vector with v[0:i-1] = 0 and 
  * v[i] = 1; v[i+1:m] is stored on exit in A[i+1:m, i].
  */
-void QR_factorize(int m, int n, double * A_input, double * tau){
-
-	//TODO: handle tau vector, gather its modifications into the final result in process (0,0)
+void QR_factorize(int m, int n, double * A_input, double * tau){	
+	
 	MPI_Init(NULL, NULL);
+
     //Useful constants
     int i_zero = 0, i_one = 1;
-
     
-    int M, N, mb, nb, nprow, npcol, sysctx, prow, pcol, mp, nq, lld, lld_distr, info, descA[9], descA_distr[9], lwork;
+    int M, N, mb, nb, nprow, npcol, sysctx, prow, pcol, mp, nq, lld, lld_distr, info, descA[9], descA_distr[9], lwork, i;
 	double *A;
 	double *A_distr;
+	//double *TAU	;
 
 	//Dimensions of global matrix
 	M=m;
@@ -193,6 +193,9 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	nprow = NPROW;
 	npcol = NPCOL;
 
+	//Initialize TAU
+	//TAU = malloc(N*sizeof(double));	
+
 	//Cblacs grid initialization
 	Cblacs_get(i_zero, i_zero, &sysctx);
 	int ctx = sysctx;
@@ -200,11 +203,15 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	Cblacs_gridinfo(ctx, &nprow, &npcol, &prow, &pcol); //prow, pcol are the row and col of the current process in the process grid
 
 	if((prow == 0) && (pcol == 0)){
-		A = malloc(M*N*sizeof(double)); //At the end of execution the result matrix will be here
+		A = malloc(M*N*sizeof(double)); //At the end of execution, the result matrix will be here
 		if(A==NULL){
 			err(1, "Couldn't allocate A\n");
 		}
-		for(int i = 0; i<(M*N); i++){
+		else{
+			printf("Allocated A with dimensions %d, %d\n", M, N);
+		}
+
+		for(i = 0; i<(M*N); i++){
 			A[i] = A_input[i];
 		}
 	}
@@ -215,20 +222,22 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	//Compute the size of the local part of the matrix	
 	mp = numroc_(&M, &mb, &prow, &i_zero, &nprow);
 	nq = numroc_(&N, &nb, &pcol, &i_zero, &npcol);
-	A_distr = malloc(mp*nq*sizeof(double));
+	//A_distr = malloc(mp*nq*sizeof(double));
+	
+	/*
 	if(A_distr == NULL){
 		err(1, "Couldn't allocate A_distr\n");
 	}
-	
+	*/
 
 	//Initialize descriptors of A and A_distr
 	lld = MAX( numroc_( &M, &M, &prow, &i_zero, &nprow ), 1 );
-    lld_distr = MAX( mp, 1 );
+    //lld_distr = MAX( mp, 1 );
 	descinit_(descA, &M, &N, &M, &N, &i_zero, &i_zero, &ctx, &lld, &info);
-	descinit_(descA_distr, &M, &N, &mb, &nb, &i_zero, &i_zero, &ctx, &lld_distr, &info); //parameters 5,6 don't really make sense to me but they seem to work
+	//descinit_(descA_distr, &M, &N, &mb, &nb, &i_zero, &i_zero, &ctx, &lld_distr, &info); //parameters 5,6 don't really make sense to me but they seem to work
 
 	//Distribute the matrix
-	pdgemr2d_(&mp, &nq, A, &i_one, &i_one, descA, A_distr, &i_one, &i_one, descA_distr, &ctx); //parameters 3,4 don't really make sense to me but they seem to work
+	//pdgemr2d_(&mp, &nq, A, &i_one, &i_one, descA, A_distr, &i_one, &i_one, descA_distr, &ctx); //parameters 3,4 don't really make sense to me but they seem to work
 
 	//Docs from netlib to compute lwork
 	/*
@@ -262,23 +271,50 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	int ia = i_one; 
 	int ja = i_one;
 	double temp_work[1];
+	//double temp_work* = malloc(sizeof(double));
 	lwork=-1;
 
 	//Scalapack routine call
 	//The first call is a query to get the optimal value for lwork
-	pdgeqrf_(&M, &N, A_distr, &ia, &ja, descA_distr, tau, temp_work, &lwork, &info);
-	double work[lwork];
-	pdgeqrf_(&M, &N, A_distr, &ia, &ja, descA_distr, tau, work, &lwork, &info);
+	//pdgeqrf_(&M, &N, A_distr, &ia, &ja, descA_distr, tau, temp_work, &lwork, &info);
+	pdgeqrf_(&M, &N, A, &ia, &ja, descA, tau, temp_work, &lwork, &info);
+	if(info!=0){
+		printf("SOMETHING'S WRONG WITH QR\n");
+	}
+
 	
+	lwork = temp_work[0];
+	double *work = malloc(lwork*sizeof(double));
+	printf("Ideal size: %d\n", lwork);
+	pdgeqrf_(&M, &N, A, &ia, &ja, descA, tau, work, &lwork, &info);
+	//pdgeqrf_(&M, &N, A_distr, &ia, &ja, descA_distr, tau, work, &lwork, &info);
+	if(info!=0){
+		printf("SOMETHING'S WRONG WITH QR\n");
+	}
+
+	/*
+	//DEBUG
+	for(int k=0; k<n; k++){
+		printf("%f\n", TAU[k]);
+	}
+	*/
+	
+	//Gather the local TAU vectors into the global one, called tau	
+	/*
+	for(int t = 0; t < N; t++){	
+		tau[t] = TAU[t];		
+	}
+	*/
+		
 
 	//Copy the result into the global matrix
-	pdgemr2d_(&mp, &nq, A_distr, &i_one, &i_one, descA_distr, A, &i_one, &i_one, descA, &ctx); //parameters 3,4 don't really make sense to me but they seem to work
-
+	//pdgemr2d_(&mp, &nq, A_distr, &i_one, &i_one, descA_distr, A, &i_one, &i_one, descA, &ctx); //parameters 3,4 don't really make sense to me but they seem to work
 
 	free(A_distr);
+	//free(TAU);
 
 	if((prow == 0) && (pcol == 0)){
-		for(int i = 0; i<M*N; i++){
+		for(int i = 0; i<(M*N); i++){
 			A_input[i] = A[i];
 		}
 		free(A);
@@ -287,8 +323,8 @@ void QR_factorize(int m, int n, double * A_input, double * tau){
 	//Exit process grid. This also finalizes MPI	
 	Cblacs_gridexit(ctx);
 	Cblacs_exit(i_zero);
-	//MPI_Finalize();
-
+	//MPI_Finalize();	
+	
 }
 
 /*
@@ -350,8 +386,55 @@ void linear_least_squares(int m, int n, double *A, double *b)
 	assert(m >= n);
 
 	double tau[n];
+	//DEBUG: The tau_copy array is used later to tell if tau is modified inside the QR_factorize call
+	/*
+	double tau_copy[n];
+	for(int k = 0 ; k<n; k++){
+		tau_copy[k]=tau[k];
+	}
+	*/
+
 	QR_factorize(m, n, A, tau);                    /* QR factorization of A */
+
+	/*
+	for(int k = 0 ; k<n; k++){
+		printf("%f\n", tau[k]);
+	}
+	*/
+
+	/*
+	printf("After SCALAPACK QR");
+	for(int k = 0 ; k<m; k++){
+		printf("%f\n", b[k]);
+	}
+	*/
+
+	//DEBUG: Check if tau has been modified inside of QR_factorize
+	/*
+	int tau_is_changed = 0;
+	for(int k = 0 ; k<n; k++){
+		if((tau[k]-tau_copy[k]) != 0){
+			tau_is_changed = 1;
+		}
+		//printf("%f\n", tau[k]-tau_copy[k]);
+	}
+	if(tau_is_changed){
+		printf("Tau is changed\n");
+	}
+	else{
+		printf("Tau is NOT changed\n");
+	}
+	*/
+
 	multiply_Qt(m, n, A, tau, b);                /* B[0:m] := Q**T * B[0:m] */
+
+	/*
+	printf("After multiplyQt");
+	for(int k = 0 ; k<m; k++){
+		printf("%f\n", b[k]);
+	}
+	*/
+
 	triangular_solve(n, A, m, b);              /* B[0:n] := inv(R) * B[0:n] */
 }
 
@@ -363,14 +446,14 @@ int main(int argc, char ** argv)
 
 	/* preparations and memory allocation */
 	int nvar = (lmax + 1) * (lmax + 1);
-	printf("Linear Least Squares with dimension %d x %d\n", npoint, nvar);
+	//printf("Linear Least Squares with dimension %d x %d\n", npoint, nvar);
 	if (nvar > npoint)
 		errx(1, "not enough data points");
 
 	long matrix_size = sizeof(double) * nvar * npoint;
 	char hsize[16];
 	human_format(hsize, matrix_size);
-	printf("Matrix size: %sB\n", hsize);
+	//printf("Matrix size: %sB\n", hsize);
 
 	double *A = malloc(matrix_size);
 	if (A == NULL)
@@ -381,12 +464,12 @@ int main(int argc, char ** argv)
 	if (P == NULL || v == NULL)
 		err(1, "cannot allocate data points\n");
 
-	printf("Reading data points from %s\n", data_filename);
+	//printf("Reading data points from %s\n", data_filename);
 	struct data_points data;
 	load_data_points(data_filename, npoint, &data);
-	printf("Successfully read %d data points\n", npoint);
+	//printf("Successfully read %d data points\n", npoint);
 	
-	printf("Building matrix\n");
+	//printf("Building matrix\n");
 	struct spherical_harmonics model;
 	setup_spherical_harmonics(lmax, &model);
 
@@ -408,21 +491,23 @@ int main(int argc, char ** argv)
 	double FLOP = 2. * nvar * nvar * npoint;
 	char hflop[16];
 	human_format(hflop, FLOP);
-	printf("Least Squares (%sFLOP)\n", hflop);
+	//printf("Least Squares (%sFLOP)\n", hflop);
 	double start = wtime();
 	
 	/* the real action takes place here */
 	linear_least_squares(npoint, nvar, A, data.V);
 	
 	double t = wtime()  - start;
-	double FLOPS = FLOP / t;
+	double FLOPS = FLOP / t;	
 	char hflops[16];
 	human_format(hflops, FLOPS);
-	printf("Completed in %.1f s (%s FLOPS)\n", t, hflops);
+	//printf("Completed in %.1f s (%s FLOPS)\n", t, hflops);
 
 	double res = 0;
-	for (int j = nvar; j < npoint; j++)
+	for (int j = nvar; j < npoint; j++){
 		res += data.V[j] * data.V[j];
+		//printf("****************BRUH****************");
+	}		
 	printf("residual sum of squares %g\n", res);
 
 	printf("Saving model in %s\n", model_filename);
