@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <sys/time.h>
 #include <inttypes.h>
+#include <string.h>
 
 #include "harmonics.h"
 
@@ -76,16 +77,58 @@ void load_data_points(const char *filename, int npoint, struct data_points *self
 	FILE *f = fopen(filename, "r");
 	if (f == NULL)
 		err(1, "cannot open %s", filename);
-	
-	for (int i = 0; i < npoint; i++) {
-		int k = fscanf(f, "%lg %lg %lg", &self->lambda[i], &self->phi[i], &self->V[i]);
-		if (k == EOF) {
-			if (ferror(f))
-				err(1, "read error");
-			errx(1, "premature end-of-file after %d records", i);
+
+	int nmax=0;
+	if(strchr(filename,'s')!=NULL){//small
+		nmax=64800;
+	}
+	else if(strchr(filename,'d')!=NULL){//medium
+		nmax=583200;
+	}
+	else if(strchr(filename,'h')!=NULL){//high
+		nmax=6480000;
+	}
+	else if(strchr(filename,'t')!=NULL){//ultra
+			nmax=233280000;
+	}
+
+	int step = floor(nmax/npoint);
+	step = fmax(step,1);
+	printf("nmax/npoint = step : %d / %d = %d \n",nmax, npoint, step);
+
+	double t1, t2, t3;
+
+	for (int i = 1; i <= step*npoint; i++) {
+		//printf("here is i : %d\n",i);
+		if(i%step==0){
+      printf(" %d steps completed\n",i/step);
+			int k = fscanf(f, "%lg %lg %lg", &self->lambda[i/step], &self->phi[i/step], &self->V[i/step]);
+
+			if (k == EOF) {
+				if (ferror(f))
+					err(1, "read error");
+				errx(1, "premature end-of-file after %d records", i);
+			}
+			if (k != 3){
+				//printf(" lambda : %lg \n",&self->lambda[i]);
+				//printf(" phi : %lg \n",&self->phi[i]);
+				//printf(" V : %lg \n",&self->V[i]);
+				errx(1, "parse error on line %d", i+1);}
 		}
-		if (k != 3)
-			errx(1, "parse error on line %d", i+1);
+		else{
+			int k = fscanf(f,"%lg %lg %lg", &t1, &t2, &t3);
+
+			if (k == EOF) {
+				if (ferror(f))
+					err(1, "read error");
+				errx(1, "premature end-of-file after %d records", i);
+			}
+			if (k != 3){
+				//printf(" lambda : %lg \n",&self->lambda[i]);
+				//printf(" phi : %lg \n",&self->phi[i]);
+				//printf(" V : %lg \n",&self->V[i]);
+				errx(1, "parse error on line %d", i+1);}
+		}
 	}
 	fclose(f);
 }
@@ -138,6 +181,7 @@ void computeP(const struct spherical_harmonics *self, double *P, double sinphi)
 		P[PT(l, l - 1)] = sinphi * sqrt(2 * (l - 1) + 3) * temp;
 		temp = -sqrt(1.0 + 0.5 / l) * cosphi * temp;
 		P[PT(l, l)] = temp;
+    //printf("%d",temp);
 	}
 }
 
@@ -159,7 +203,7 @@ double evaluate(const struct spherical_harmonics *self, const double *P, double 
 	}
 
 	/* dot product */
-	double V = 0;	
+	double V = 0;
 	for (int i = 0; i < sizeCS; i++)
 		V += scratch[i] * self->CS[i];
 	return V;
