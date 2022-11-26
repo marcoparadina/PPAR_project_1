@@ -136,7 +136,7 @@ int main(int argc, char ** argv){
 	
 	/**************************************************************/
 	
-	double t = wtime()  - start;
+	double t = wtime() - start;
 	double FLOPS = FLOP / t;
 	char hflops[16];
 	human_format(hflops, FLOPS);
