@@ -22,6 +22,7 @@ extern void Cblacs_gridinit(int * ictx, const char * order, int nprow, int npcol
 extern void Cblacs_gridinfo(int ictx, int * nprow, int * npcol, int * myrow, int * mycol);
 extern void Cblacs_gridexit( int ictx );
 extern void Cblacs_exit( int doneflag );
+extern void pdgels_(char* TRANS, int* M, int* N, int* NRHS, double *A, int * IA, int * JA, int * DESCA, double * B, int * IB, int * JB, int * DESCB, double * WORK, int * LWORK, int * INFO);
 
 int numroc_(int* N, int* NB, int* IPROC, int *ISRCPROC, int* NPROCS );
 int indxg2p_( int* INDXGLOB, int* NB, int* IPROC, int* ISRCPROC, int* NPROCS  );
@@ -29,7 +30,7 @@ void pdgemr2d_( int* m, int* n, double* a, int* ia, int* ja, int* desca, double*
 void pdgeadd_( char* TRANS, int * M, int * N, double * ALPHA, double * A, int * IA, int * JA, int * DESCA, double * BETA, double * C, int * IC, int * JC, int * DESCC );
 void pdgeqrf_(int* M, int *N, double* A, int* IA, int *JA, int* DESCA, double *TAU, double *WORK, int* LWORK, int *INFO);
 void descinit_ (int *desc, const int *m, const int *n, const int *mb, const int *nb, const int *irsrc, const int *icsrc, const int *ictxt, const int *lld, int *info);
-void pdgels_(char* TRANS, int* M, int* N, int* NRHS, double *A, int * IA, int * JA, int * DESCA, double * B, int * IB, int * JB, int * DESCB, double * WORK, int * LWORK, int * INFO);
+//void pdgels_(char* TRANS, int* M, int* N, int* NRHS, double *A, int * IA, int * JA, int * DESCA, double * B, int * IB, int * JB, int * DESCB, double * WORK, int * LWORK, int * INFO);
 
 void dgeqrf_(int* M, int* N, double *A, int *LDA, double* TAU, double *WORK, int* LWORK, int *INFO);	
 void dormqr_(char *side, char *trans, int* M, int* N, int* k, double *A, int *LDA, double* TAU, double* C, int* LDC, double *WORK, int* LWORK, int *INFO);	
