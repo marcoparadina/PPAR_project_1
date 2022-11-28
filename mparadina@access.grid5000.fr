@@ -9,8 +9,8 @@
 #include "scalapack.h"
 
 //Dimensions of process grid
-#define NPROW 2
-#define NPCOL 2
+#define NPROW 4
+#define NPCOL 4
 
 int lmax = -1;
 int npoint;
@@ -212,7 +212,6 @@ int main(int argc, char ** argv){
 
     //Distribute matrices A and b into local matrices A_distr, b_distr
     int ia, ja, ib, jb;
-    
     if((prow*mb_A + 1) < nprow){
         ia = prow*mb_A + 1;
     }
@@ -240,15 +239,9 @@ int main(int argc, char ** argv){
     else{
         jb= i_one;
     }
-    
-   /*
-   ia = prow*mb_A + 1;
-   ja = pcol*nb_A + 1;
-   ib = prow*mb_b + 1;
-   jb = pcol*nb_A + 1;
-   */
-    Cpdgemr2d(mp_A,nq_A, A, ia, ja, descA, A_distr, i_one, i_one, descA_distr, ctx);  
-    Cpdgemr2d(mp_b,nq_b, b, ib, jb, descb, b_distr, i_one, i_one, descb_distr, ctx);
+
+    Cpdgemr2d(mp_A,nq_A, A, i_one, i_one, descA, A_distr, i_one, i_one, descA_distr, ctx);  
+    Cpdgemr2d(mp_b,nq_b, b, i_one, i_one, descb, b_distr, i_one, i_one, descb_distr, ctx);
     //pdgeadd_("N", &M, &N, &one, A, &i_one, &i_one, descA, &zero, A_distr, &i_one, &i_one, descA_distr);
     //pdgeadd_("N", &M, &i_one, &one, b, &i_one, &i_one, descb, &zero, b_distr, &i_one, &i_one, descb_distr);
     
@@ -280,7 +273,7 @@ int main(int argc, char ** argv){
     //Copy the least-square solution the global matrix b (A doesn't need to be updated: the LSS is contained in b)
     //pdgeadd_("N", &M, &N, &one, A_distr, &i_one, &i_one, descA_distr, &zero, A, &i_one, &i_one, descA); //leave this commented out
     //pdgeadd_("N", &M, &i_one, &one, b_distr, &i_one, &i_one, descb_distr, &zero, b, &i_one, &i_one, descb);
-    Cpdgemr2d(mp_b,nq_b, b_distr, i_one, i_one, descb_distr, b, ib, jb, descb, ctx);  //i_one might have to be changed to i_zero
+    Cpdgemr2d(mp_b,nq_b, b_distr, i_one, i_one, descb_distr, b, i_one, i_one, descb, ctx);  //i_one might have to be changed to i_zero
     free(A_distr);
     free(b_distr);
 
