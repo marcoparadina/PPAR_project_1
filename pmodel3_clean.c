@@ -9,8 +9,8 @@
 #include "scalapack.h"
 
 //Dimensions of process grid
-#define NPROW 4
-#define NPCOL 4
+#define NPROW 2
+#define NPCOL 2
 
 long lmax = -1;
 long npoint;
@@ -76,7 +76,7 @@ void process_command_line_options(int argc, char ** argv)
 			errx(1, "Unknown option\n");
 		}
 	}
-	/* missing required args? */
+	
 	if (data_filename == NULL || model_filename == NULL || lmax < 0 || npoint <= 0)
 		usage(argv);
 }
@@ -130,10 +130,10 @@ int main(int argc, char ** argv){
 	N=nvar;
 
 	//Blocking parameters (dimention of blocks) respectively for A and b
-	mb_A = 10;
-	nb_A = 10;
-    mb_b = 10; 
-    nb_b = 10;
+	mb_A = 50;
+	nb_A = 50;
+    mb_b = 50; 
+    nb_b = 50;
     
     if((prow == 0) && (pcol == 0)){
 

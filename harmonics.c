@@ -79,16 +79,17 @@ void load_data_points(const char *filename, long npoint, struct data_points *sel
 		err(1, "cannot open %s", filename);
 
 	long nmax=0;
-	if(strchr(filename,'s')!=NULL){//small
+	
+	if((strchr(filename,'s')!=NULL) && (strchr(filename,'m')!=NULL) && (strchr(filename,'l')!=NULL) && (strchr(filename,'a')!=NULL)){//small
 		nmax=64800;
 	}
-	else if(strchr(filename,'d')!=NULL){//medium
+	else if((strchr(filename,'m')!=NULL) && (strchr(filename,'e')!=NULL) && (strchr(filename,'d')!=NULL) && (strchr(filename,'i')!=NULL) && (strchr(filename,'u')!=NULL)){//medium
 		nmax=583200;
 	}
-	else if(strchr(filename,'h')!=NULL){//high
+	else if((strchr(filename,'h')!=NULL) && (strchr(filename,'i')!=NULL) && (strchr(filename,'g')!=NULL)){//high
 		nmax=6480000;
 	}
-	else if(strchr(filename,'t')!=NULL){//ultra
+	else if((strchr(filename,'u')!=NULL) && (strchr(filename,'l')!=NULL) && (strchr(filename,'t')!=NULL) && (strchr(filename,'r')!=NULL) && (strchr(filename,'a')!=NULL)){//ultra
 			nmax=233280000;
 	}
 
