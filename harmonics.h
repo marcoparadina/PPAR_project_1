@@ -4,7 +4,7 @@
 
 /* representation of spherical harmonics coefficients */
 struct spherical_harmonics {
-	int lmax;
+	long lmax;
 	double *CS;
 	double *A;
 	double *B;
@@ -12,7 +12,7 @@ struct spherical_harmonics {
 
 /* representation of a sequence of data points */
 struct data_points {
-	int npoint;
+	long npoint;
 	double *phi;
 	double *lambda;
 	double *V;
@@ -45,7 +45,7 @@ double wtime();
 void human_format(char * target, long n);
 
 /* allocates memory for self */
-void setup_spherical_harmonics(int lmax, struct spherical_harmonics *self);
+void setup_spherical_harmonics(long lmax, struct spherical_harmonics *self);
 
 /*
  * Load spherical harmonics from a file.  File format:
@@ -53,14 +53,14 @@ void setup_spherical_harmonics(int lmax, struct spherical_harmonics *self);
  * Each line contains (l, m, c, s) with 0 <= m <= l <= lmax.
  * If m == 0, then s == 0.
  */
-void load_spherical_harmonics(const char *filename, int lmax, struct spherical_harmonics *self);
+void load_spherical_harmonics(const char *filename, long lmax, struct spherical_harmonics *self);
 
 /*
  * Load data points from a file into "self".  File format:
  * each line contains 3 floating-point numbers separated by tabs.
  * Each line contains (lambda, phi, V) where V == f(phi, lambda).
  */
-void load_data_points(const char *filename, int npoint, struct data_points *self);
+void load_data_points(const char *filename, long npoint, struct data_points *self);
 
 /*
  * Compute all the (fully normalized) Associated Legendre function of degree <= lmax.

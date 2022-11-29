@@ -9,8 +9,8 @@
 #include "scalapack.h"
 
 //Dimensions of process grid
-#define NPROW 2
-#define NPCOL 2
+#define NPROW 4
+#define NPCOL 4
 
 long lmax = -1;
 long npoint;

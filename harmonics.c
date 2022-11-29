@@ -41,11 +41,11 @@ void human_format(char * target, long n) {
 }
 
 
-void setup_spherical_harmonics(int lmax, struct spherical_harmonics *self)
+void setup_spherical_harmonics(long lmax, struct spherical_harmonics *self)
 {
 	self->lmax = lmax;
-	int sizeCS = (lmax + 1) * (lmax + 1);
-	int sizeAB = (lmax + 1) * (lmax + 2) / 2;
+	long sizeCS = (lmax + 1) * (lmax + 1);
+	long sizeAB = (lmax + 1) * (lmax + 2) / 2;
 
 	self->CS = malloc(sizeCS * sizeof(double));
 	self->A = malloc(sizeAB * sizeof(double));
@@ -54,10 +54,10 @@ void setup_spherical_harmonics(int lmax, struct spherical_harmonics *self)
 		err(1, "cannot allocate harmonics\n");
 
 	/* compute the A, B coefficients */
-	for (int l = 2; l <= lmax; l++) {
+	for (long l = 2; l <= lmax; l++) {
 		double ls = l * l;
 		double lm1s = (l - 1) * (l - 1);
-		for (int m = 0; m < l - 1; m++) {
+		for (long m = 0; m < l - 1; m++) {
 			double ms = m * m;
 			self->A[PT(l, m)] = sqrt((4 * ls - 1) / (ls - ms));
 			self->B[PT(l, m)] = -sqrt((lm1s - ms) / (4 * lm1s - 1));
@@ -65,7 +65,7 @@ void setup_spherical_harmonics(int lmax, struct spherical_harmonics *self)
 	}
 }
 
-void load_data_points(const char *filename, int npoint, struct data_points *self)
+void load_data_points(const char *filename, long npoint, struct data_points *self)
 {
 	self->npoint = npoint;
 	self->phi = malloc(npoint * sizeof(double));
@@ -78,7 +78,7 @@ void load_data_points(const char *filename, int npoint, struct data_points *self
 	if (f == NULL)
 		err(1, "cannot open %s", filename);
 
-	int nmax=0;
+	long nmax=0;
 	if(strchr(filename,'s')!=NULL){//small
 		nmax=64800;
 	}
@@ -126,7 +126,7 @@ void load_data_points(const char *filename, int npoint, struct data_points *self
 	fclose(f);
 }
 
-void load_spherical_harmonics(const char *filename, int lmax, struct spherical_harmonics *self)
+void load_spherical_harmonics(const char *filename, long lmax, struct spherical_harmonics *self)
 {
 	FILE *g = fopen(filename, "r");
 	if (g == NULL)

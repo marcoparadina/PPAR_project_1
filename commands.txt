@@ -1,0 +1,6 @@
+mpirun -n 4 ./pmodel23_clean --data ETOPO1_hi.csv --model out.csv --npoint 648000 --lmax 9
+./validate --data ETOPO1_hi.csv --model out.csv -- lmax 9
+oarsub -p gros -l host=54,walltime=14 -r '2022-11-29 19:00:00'
+sudo-g5k atp install libscalapack-openmpi-dev
+scp -r PPAR_project_1 mparadina@access.grid5000.fr:nancy
+scp filename mparadina@access.grid5000.fr:nancy/PPAR_project_1
