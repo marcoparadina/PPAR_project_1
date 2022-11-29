@@ -115,7 +115,7 @@ int main(int argc, char ** argv){
 	Cblacs_gridinfo(ctx, &nprow, &npcol, &prow, &pcol);
 
     //Declarations and memory allocations
-    long int M, N, mb_A, nb_A, mb_b, nb_b, mp_A, nq_A, mp_b, nq_b, lld_A, lld_A_distr, lld_b, lld_b_distr;
+    int M, N, mb_A, nb_A, mb_b, nb_b, mp_A, nq_A, mp_b, nq_b, lld_A, lld_A_distr, lld_b, lld_b_distr;
     int descA[9], descA_distr[9], descb[9], descb_distr[9], lwork, infoA, infoA_distr, infob, infob_distr, info;
     double *A;
     double *A_distr;
@@ -128,10 +128,10 @@ int main(int argc, char ** argv){
 	N=nvar;
 
 	//Blocking parameters (dimention of blocks) respectively for A and b
-	mb_A = 10;
-	nb_A = 10;
-    mb_b = 10; 
-    nb_b = 10;
+	mb_A = 1;
+	nb_A = 1;
+    mb_b = 1; 
+    nb_b = 1;
     
     if((prow == 0) && (pcol == 0)){
 
@@ -171,6 +171,11 @@ int main(int argc, char ** argv){
                 }
             }
         }
+        /*
+        for(int i=0; i<M*N; i++){
+        printf("PG[%d, %d] Original A\t%d:\t%f\n", prow, pcol, i, A[i]);
+        }
+        */
 
         /***********************************************************************/
 	}
@@ -184,8 +189,8 @@ int main(int argc, char ** argv){
 	//Compute the size of the local part of the matrices A and b, called A_distr and b_distr	
 	mp_A = numroc_(&M, &mb_A, &prow, &i_zero, &nprow);
 	nq_A = numroc_(&N, &nb_A, &pcol, &i_zero, &npcol);
-    mp_b = mp_A; 
-    nq_b = 1; //numroc_(&i_one, &nb_b, &pcol, &i_zero, &npcol);  //should this be 1?
+    mp_b = numroc_(&M, &mb_b, &prow, &i_zero, &nprow);
+    nq_b = max(1, numroc_(&i_one, &nb_b, &pcol, &i_zero, &npcol));  //should this be 1?
     
 	A_distr = malloc(mp_A*nq_A*sizeof(double));
 	if(A_distr == NULL){
@@ -212,7 +217,11 @@ int main(int argc, char ** argv){
 
     //Distribute matrices A and b into local matrices A_distr, b_distr
     int ia, ja, ib, jb;
-    
+    ia = i_one;
+    ja = i_one; 
+    ib = i_one;
+    jb = i_one;
+    /*
     if((prow*mb_A + 1) < nprow){
         ia = prow*mb_A + 1;
     }
@@ -240,6 +249,15 @@ int main(int argc, char ** argv){
     else{
         jb= i_one;
     }
+    */
+   /*
+   ia = prow*mb_A +1 ;
+   ja = pcol*nb_A +1 ;
+   ib = prow*mb_b +1 ;
+   jb = pcol*nb_b +1 ;
+    */
+   
+   //printf("\n%d, %d, %d, %d\n", mp_A, nq_A, mp_b, nq_b);
     
    /*
    ia = prow*mb_A + 1;
@@ -247,10 +265,17 @@ int main(int argc, char ** argv){
    ib = prow*mb_b + 1;
    jb = pcol*nb_A + 1;
    */
-    Cpdgemr2d(mp_A,nq_A, A, ia, ja, descA, A_distr, i_one, i_one, descA_distr, ctx);  
-    Cpdgemr2d(mp_b,nq_b, b, ib, jb, descb, b_distr, i_one, i_one, descb_distr, ctx);
+    Cpdgemr2d(M,N, A, ia, ja, descA, A_distr, i_one, i_one, descA_distr, ctx);  
+    Cpdgemr2d(M,i_one, b, ib, jb, descb, b_distr, i_one, i_one, descb_distr, ctx);
     //pdgeadd_("N", &M, &N, &one, A, &i_one, &i_one, descA, &zero, A_distr, &i_one, &i_one, descA_distr);
     //pdgeadd_("N", &M, &i_one, &one, b, &i_one, &i_one, descb, &zero, b_distr, &i_one, &i_one, descb_distr);
+
+    /*
+    for(int i=0; i<mp_A*nq_A; i++){
+        printf("PG[%d, %d] Before\t%d:\t%f\n", prow, pcol, i, A_distr[i]);
+    }
+    */
+        
     
     //Call to the ScaLAPACK least-square-solution routine. The first call is a query to get the optimal value of lwork.
     //There are 3 versions of the pdgels call, described in the comment following the call.
@@ -261,7 +286,7 @@ int main(int argc, char ** argv){
 
     double temp_work[1];
     //pdgels_("N", &mp_A, &nq_A, &i_one, A_distr, &ia, &ja, descA_distr, b, &ib, &jb, descb, temp_work, &i_neg_one, &info); //distributing only A
-    pdgels_("N", &mp_A, &nq_A, &i_one, A_distr, &ia, &ja, descA_distr, b_distr, &ib, &jb, descb_distr, temp_work, &i_neg_one, &info); //distributing A and b
+    pdgels_("N", &M, &N, &i_one, A_distr, &i_one, &i_one, descA_distr, b_distr, &i_one, &i_one, descb_distr, temp_work, &i_neg_one, &info); //distributing A and b
     //pdgels_("N", &M, &N, &i_one, A, &ia, &ja, descA, b, &ib, &jb, descb, temp_work, &i_neg_one, &info); //no distribution
     if(info!=0){
         err(1, "Query call of pdgels failed \n");
@@ -270,7 +295,7 @@ int main(int argc, char ** argv){
     double *work = malloc(lwork * sizeof(double));
 
     //pdgels_("N", &mp_A, &nq_A, &i_one, A_distr, &ia, &ja, descA_distr, b, &ib, &jb, descb, work, &lwork, &info);  //distributing only A
-    pdgels_("N", &mp_A, &nq_A, &i_one, A_distr, &ia, &ja, descA_distr, b_distr, &ib, &jb, descb_distr, work, &lwork, &info);  //distributing A and b
+    pdgels_("N", &M, &N, &i_one, A_distr, &i_one, &i_one, descA_distr, b_distr, &i_one, &i_one, descb_distr, work, &lwork, &info); //distributing A and b
     //pdgels_("N", &M, &N, &i_one, A, &ia, &ja, descA, b, &ib, &jb, descb, work, &lwork, &info); //no distribution
     if(info!=0){
         err(1, "Call of pdgels failed \n");
@@ -280,7 +305,7 @@ int main(int argc, char ** argv){
     //Copy the least-square solution the global matrix b (A doesn't need to be updated: the LSS is contained in b)
     //pdgeadd_("N", &M, &N, &one, A_distr, &i_one, &i_one, descA_distr, &zero, A, &i_one, &i_one, descA); //leave this commented out
     //pdgeadd_("N", &M, &i_one, &one, b_distr, &i_one, &i_one, descb_distr, &zero, b, &i_one, &i_one, descb);
-    Cpdgemr2d(mp_b,nq_b, b_distr, i_one, i_one, descb_distr, b, ib, jb, descb, ctx);  //i_one might have to be changed to i_zero
+    Cpdgemr2d(M,i_one, b_distr, i_one, i_one, descb_distr, b, ib, jb, descb, ctx);  //i_one might have to be changed to i_zero
     free(A_distr);
     free(b_distr);
 
