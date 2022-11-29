@@ -92,35 +92,35 @@ void load_data_points(const char *filename, int npoint, struct data_points *self
 			nmax=233280000;
 	}
 
-	int step = floor(nmax/npoint);
+	long step = floor(nmax/npoint);
 	step = fmax(step,1);
 	//printf("nmax/npoint = step : %d / %d = %d \n",nmax, npoint, step);
 
 	double t1, t2, t3;
 
-	for (int i = 1; i <= step*npoint; i++) {
+	for (long i = 1; i <= step*npoint; i++) {
 		if(i%step==0){
-			int k = fscanf(f, "%lg %lg %lg", &self->lambda[i/step], &self->phi[i/step], &self->V[i/step]);
+			long k = fscanf(f, "%lg %lg %lg", &self->lambda[i/step], &self->phi[i/step], &self->V[i/step]);
 
 			if (k == EOF) {
 				if (ferror(f))
 					err(1, "read error");
-				errx(1, "premature end-of-file after %d records", i);
+				errx(1, "premature end-of-file after %ld records", i);
 			}
 			if (k != 3){
-				errx(1, "parse error on line %d", i+1);}
+				errx(1, "parse error on line %ld", i+1);}
 		}
 		else{
-			int k = fscanf(f,"%lg %lg %lg", &t1, &t2, &t3);
+			long k = fscanf(f,"%lg %lg %lg", &t1, &t2, &t3);
 
 			if (k == EOF) {
 				if (ferror(f))
 					err(1, "read error");
-				errx(1, "premature end-of-file after %d records", i);
+				errx(1, "premature end-of-file after %ld records", i);
 			}
 			if (k != 3){
 
-				errx(1, "parse error on line %d", i+1);}
+				errx(1, "parse error on line %ld", i+1);}
 		}
 	}
 	fclose(f);
@@ -133,11 +133,11 @@ void load_spherical_harmonics(const char *filename, int lmax, struct spherical_h
 		err(1, "cannot open %s", filename);
 	setup_spherical_harmonics(lmax, self);
 	for (;;) {
-		int l, m;
+		long l, m;
 		double c, s;
-		int k = fscanf(g, "%d %d %lg %lg", &l, &m, &c, &s);
+		long k = fscanf(g, "%ld %ld %lg %lg", &l, &m, &c, &s);
 		if (m == 0 && s != 0)
-			errx(1, "non-zero S coefficient with l=%d and m=0", l);
+			errx(1, "non-zero S coefficient with l=%ld and m=0", l);
 		self->CS[CT(l, m)] = c;
 		if (m > 0)
 			self->CS[ST(l, m)] = s;
@@ -168,8 +168,8 @@ void computeP(const struct spherical_harmonics *self, double *P, double sinphi)
 	P[PT(1, 0)] = sinphi * sqrt(3) * temp;
 	temp = 0.5 * sqrt(3) * cosphi * temp;
 	P[PT(1, 1)] = temp;
-	for (int l = 2; l <= self->lmax; l++) {
-		for (int m = 0; m < l - 1; m++)
+	for (long l = 2; l <= self->lmax; l++) {
+		for (long m = 0; m < l - 1; m++)
 			P[PT(l, m)] = self->A[PT(l, m)] * (sinphi * P[PT(l - 1, m)] + self->B[PT(l, m)] * P[PT(l - 2, m)]);
 		P[PT(l, l - 1)] = sinphi * sqrt(2 * (l - 1) + 3) * temp;
 		temp = -sqrt(1.0 + 0.5 / l) * cosphi * temp;
@@ -180,16 +180,16 @@ void computeP(const struct spherical_harmonics *self, double *P, double sinphi)
 
 double evaluate(const struct spherical_harmonics *self, const double *P, double lambda)
 {
-	int lmax = self->lmax;
-	int sizeCS = (lmax + 1) * (lmax + 1);
+	long lmax = self->lmax;
+	long sizeCS = (lmax + 1) * (lmax + 1);
 	double scratch[sizeCS];
 
-	for (int l = 0; l <= lmax; l++) {
+	for (long l = 0; l <= lmax; l++) {
 		/* zonal term */
 		scratch[CT(l, 0)] = P[PT(l, 0)];
 
 		/* tesseral terms */
-		for (int m = 1; m <= l; m++) {
+		for (long m = 1; m <= l; m++) {
 			scratch[CT(l, m)] = P[PT(l, m)] * cos(m * lambda);
 			scratch[ST(l, m)] = P[PT(l, m)] * sin(m * lambda);
 		}
@@ -197,7 +197,7 @@ double evaluate(const struct spherical_harmonics *self, const double *P, double 
 
 	/* dot product */
 	double V = 0;
-	for (int i = 0; i < sizeCS; i++)
+	for (long i = 0; i < sizeCS; i++)
 		V += scratch[i] * self->CS[i];
 	return V;
 }

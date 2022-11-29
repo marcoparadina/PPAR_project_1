@@ -12,27 +12,27 @@
 #define NPROW 2
 #define NPCOL 2
 
-int lmax = -1;
-int npoint;
+long lmax = -1;
+long npoint;
 char * data_filename;
 char * model_filename;
 
 
-int max(int a, int b){
+long max(long a, long b){
 	if(a > b){
 		return a;
 	}
 	return b;
 }
 
-int min(int a, int b){
+long min(long a, long b){
 	if(a < b){
 		return a;
 	}
 	return b;
 }
 
-int MOD(int a, int b){
+long MOD(long a, long b){
 	return (a%b);	
 }
 
@@ -94,12 +94,13 @@ int main(int argc, char ** argv){
     process_command_line_options(argc, argv);
 
 	//Preparations
-	int nvar = (lmax + 1) * (lmax + 1);
+	long nvar = (lmax + 1) * (lmax + 1);
 	if (nvar > npoint)
 		errx(1, "not enough data points");
 
     //Useful constants
-    int i_zero = 0, i_one = 1, i_neg_one = -1;
+    long i_zero = 0, i_one = 1;
+    long i_neg_one = -1;
     //double one = 1, zero = 0;
     
     int nprow, npcol, prow, pcol, sysctx;
@@ -115,8 +116,9 @@ int main(int argc, char ** argv){
 	Cblacs_gridinfo(ctx, &nprow, &npcol, &prow, &pcol);
 
     //Declarations and memory allocations
-    int M, N, mb_A, nb_A, mb_b, nb_b, mp_A, nq_A, mp_b, nq_b, lld_A, lld_A_distr, lld_b, lld_b_distr;
-    int descA[9], descA_distr[9], descb[9], descb_distr[9], lwork, infoA, infoA_distr, infob, infob_distr, info;
+    long M, N, mb_A, nb_A, mb_b, nb_b, mp_A, nq_A, mp_b, nq_b, lld_A, lld_A_distr, lld_b, lld_b_distr, lwork;
+    int descA[9], descA_distr[9], descb[9], descb_distr[9], infoA, infoA_distr, infob, infob_distr, info;
+    double start = 0, t;
     double *A;
     double *A_distr;
     double *b;
@@ -142,7 +144,7 @@ int main(int argc, char ** argv){
         b = malloc(npoint*sizeof(double));
 
         //Copy data.V into b
-        for(int i = 0; i< npoint; i++){
+        for(long i = 0; i< npoint; i++){
             b[i] = data.V[i];
         }
         
@@ -157,27 +159,22 @@ int main(int argc, char ** argv){
 
         //Build A
         A = malloc(M*N*sizeof(double));
-        for (int i = 0; i < npoint; i++) {
+        for (long i = 0; i < npoint; i++) {
             computeP(&model, P, sin(data.phi[i]));
             
-            for (int l = 0; l <= lmax; l++) {
+            for (long l = 0; l <= lmax; l++) {
                 /* zonal term */
                 A[i + npoint * CT(l, 0)] = P[PT(l, 0)];
         
                 /* tesseral terms */
-                for (int m = 1; m <= l; m++) {
+                for (long m = 1; m <= l; m++) {
                     A[i + npoint * CT(l, m)] = P[PT(l, m)] * cos(m * data.lambda[i]);
                     A[i + npoint * ST(l, m)] = P[PT(l, m)] * sin(m * data.lambda[i]);
                 }
             }
         }
-        /*
-        for(int i=0; i<M*N; i++){
-        printf("PG[%d, %d] Original A\t%d:\t%f\n", prow, pcol, i, A[i]);
-        }
-        */
-
         /***********************************************************************/
+        start = wtime();
 	}
     else{
         A = NULL;    
@@ -221,60 +218,11 @@ int main(int argc, char ** argv){
     ja = i_one; 
     ib = i_one;
     jb = i_one;
-    /*
-    if((prow*mb_A + 1) < nprow){
-        ia = prow*mb_A + 1;
-    }
-    else{
-        ia = i_one;
-    }
-
-    if((pcol*nb_A + 1) < npcol){
-        ja = pcol*nb_A + 1;
-    }
-    else{
-        ja = i_one;
-    }
-    
-    if((prow*mb_b + 1) < nprow){
-        ib = prow*mb_b + 1;
-    }
-    else{
-        ib = i_one;
-    }
-
-    if((pcol*nb_A + 1) < npcol){
-        jb = pcol*nb_A + 1;
-    }
-    else{
-        jb= i_one;
-    }
-    */
-   /*
-   ia = prow*mb_A +1 ;
-   ja = pcol*nb_A +1 ;
-   ib = prow*mb_b +1 ;
-   jb = pcol*nb_b +1 ;
-    */
    
-   //printf("\n%d, %d, %d, %d\n", mp_A, nq_A, mp_b, nq_b);
-    
-   /*
-   ia = prow*mb_A + 1;
-   ja = pcol*nb_A + 1;
-   ib = prow*mb_b + 1;
-   jb = pcol*nb_A + 1;
-   */
     Cpdgemr2d(M,N, A, ia, ja, descA, A_distr, i_one, i_one, descA_distr, ctx);  
     Cpdgemr2d(M,i_one, b, ib, jb, descb, b_distr, i_one, i_one, descb_distr, ctx);
     //pdgeadd_("N", &M, &N, &one, A, &i_one, &i_one, descA, &zero, A_distr, &i_one, &i_one, descA_distr);
     //pdgeadd_("N", &M, &i_one, &one, b, &i_one, &i_one, descb, &zero, b_distr, &i_one, &i_one, descb_distr);
-
-    /*
-    for(int i=0; i<mp_A*nq_A; i++){
-        printf("PG[%d, %d] Before\t%d:\t%f\n", prow, pcol, i, A_distr[i]);
-    }
-    */
         
     
     //Call to the ScaLAPACK least-square-solution routine. The first call is a query to get the optimal value of lwork.
@@ -314,12 +262,17 @@ int main(int argc, char ** argv){
     //Save the model in the output file
     if((prow == 0 ) && (pcol == 0 )){
 
+        //The first process prints the time that it took to solve the least-square-problem. The first process is the one that takes the longest, 
+        //since it has to handle the global matrices, so its execution time represents the execution time of the whole program
+        t = wtime() - start;
+        printf("Completed in %.1f s\n", t);
+
         //Copy b back into data.V
-        for(int i = 0; i< npoint; i++){
+        for(long i = 0; i< npoint; i++){
             data.V[i] = b[i];
         }
         double res = 0;
-        for (int j = nvar; j < npoint; j++){
+        for (long j = nvar; j < npoint; j++){
             res += data.V[j] * data.V[j];
         }		
         printf("residual sum of squares %g\n", res);
@@ -328,10 +281,10 @@ int main(int argc, char ** argv){
         FILE *g = fopen(model_filename, "w");
         if (g == NULL)
             err(1, "cannot open %s for writing\n", model_filename);
-        for (int l = 0; l <= lmax; l++) {
-            fprintf(g, "%d\t0\t%.18g\t0\n", l, data.V[CT(l, 0)]);
-            for (int m = 1; m <= l; m++)
-                fprintf(g, "%d\t%d\t%.18g\t%.18g\n", l, m, data.V[CT(l, m)], data.V[ST(l, m)]);
+        for (long l = 0; l <= lmax; l++) {
+            fprintf(g, "%ld\t0\t%.18g\t0\n", l, data.V[CT(l, 0)]);
+            for (long m = 1; m <= l; m++)
+                fprintf(g, "%ld\t%ld\t%.18g\t%.18g\n", l, m, data.V[CT(l, m)], data.V[ST(l, m)]);
         }
         free(A);
         free(b);
