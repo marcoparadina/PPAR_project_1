@@ -128,10 +128,10 @@ int main(int argc, char ** argv){
 	N=nvar;
 
 	//Blocking parameters (dimention of blocks) respectively for A and b
-	mb_A = 1;
-	nb_A = 1;
-    mb_b = 1; 
-    nb_b = 1;
+	mb_A = 10;
+	nb_A = 10;
+    mb_b = 10; 
+    nb_b = 10;
     
     if((prow == 0) && (pcol == 0)){
 
@@ -190,7 +190,7 @@ int main(int argc, char ** argv){
 	mp_A = numroc_(&M, &mb_A, &prow, &i_zero, &nprow);
 	nq_A = numroc_(&N, &nb_A, &pcol, &i_zero, &npcol);
     mp_b = numroc_(&M, &mb_b, &prow, &i_zero, &nprow);
-    nq_b = max(1, numroc_(&i_one, &nb_b, &pcol, &i_zero, &npcol));  //should this be 1?
+    nq_b = numroc_(&i_one, &nb_b, &pcol, &i_zero, &npcol);  //should this be 1?//max(1, numroc_(&i_one, &nb_b, &pcol, &i_zero, &npcol));  //should this be 1?
     
 	A_distr = malloc(mp_A*nq_A*sizeof(double));
 	if(A_distr == NULL){
