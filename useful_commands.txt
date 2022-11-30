@@ -7,7 +7,7 @@ scp filename mparadina@access.grid5000.fr:nancy/PPAR_project_1
 OAR_JOB_ID=3897665 oarsh gros-97 //access job host
 mpirun -n 961 -machinefile $OAR_NODEFILE ./pmodel3_clean --data /srv/storage/ppar@storage1.nancy.grid5000.fr/ETOPO1_ultra.csv --model out.csv --npoint 150000 --lmax 149
 
-oarsub -p gros -l nodes=54,walltime=14 -r '2022-11-30 19:00:00' --notify "mail:mparadina10@gmail.com" --stdout standard_out.txt ./run_all
+oarsub -p gros -l nodes=54,walltime=14 -r '2022-11-30 19:00:00' --notify "mail:Marco.Paradina@etu.sorbonne-universite.fr" --stdout standard_out.txt 
 
 chmod u+x run_all.sh
 
