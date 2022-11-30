@@ -4,7 +4,7 @@ by Marco PARADINA, Diego ARBULU SEDANO, Vignesh ANANTHARAMAKRISHNAN
 
 `pmodel.c` contains the ScaLAPACK implementation and computes the least square solution
 
-`scalapack.h` is the header file for all the ScaLAPACK and Cblacs routines signatures
+`scalapack.h` is the header file for all the ScaLAPACK and Cblacs routines' signatures
 
 `install_scalapack` is a bash script to install ScaLAPACK on all the nodes that are being used for a job on grid5000
 
