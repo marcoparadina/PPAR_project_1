@@ -1,6 +1,7 @@
 # PPAR project 1: Earth elevation data #
 by Marco PARADINA, Diego ARBULU SEDANO, Vignesh ANANTHARAMAKRISHNAN
 <br/><br/>
+
 `pmodel.c` contains the ScaLAPACK implementation and computes the least square solution
 
 `scalapack.h` is the header file for all the ScaLAPACK and Cblacs routines signatures
