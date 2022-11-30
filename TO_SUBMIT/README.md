@@ -36,8 +36,7 @@ To validate the result obtained from the computation, use `validate.c` as follow
 
 `./validate --data [input_file_name] --model [output_file_name] --lmax [number_of_points]`
 
-
-
+## Output ##
 `pmodel.c` produces 2 outputs:
 * The file containing the least-square solution
 * A file containig the residual sum of squares after solving the least-square-problem and the time it took to execute, called `timer_file.txt`
