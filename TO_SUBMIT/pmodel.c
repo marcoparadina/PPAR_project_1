@@ -9,8 +9,8 @@
 #include "scalapack.h"
 
 //Dimensions of process grid
-#define NPROW 31
-#define NPCOL 31
+#define NPROW 2
+#define NPCOL 2
 
 long lmax = -1;
 long npoint;
@@ -81,10 +81,6 @@ void process_command_line_options(int argc, char ** argv)
 		usage(argv);
 }
 
-
-//NOTE: b needs to be distributed as well, otherwise least-square can't be computed because it would have incompatible dimensions between
-//      the A_distr matrix and b. The least-square-solution, found by pdgels, minimizes |A_distr*x=b|. To make dimensions compatible b needs
-//      to be replaced with a b_distr. This is also specified in the docs of pdgels
 int main(int argc, char ** argv){
     
     //If Cblacs_pinfo is called, MPI_Init is called by it as well if it hasn't been called yet. Since here we never use Cblacs_pinfo,
@@ -101,7 +97,6 @@ int main(int argc, char ** argv){
     //Useful constants
     long i_zero = 0, i_one = 1;
     long i_neg_one = -1;
-    //double one = 1, zero = 0;
     
     int nprow, npcol, prow, pcol, sysctx;
 	
@@ -173,6 +168,7 @@ int main(int argc, char ** argv){
                 }
             }
         }
+
         /***********************************************************************/
         start = wtime();
 	}
@@ -187,7 +183,7 @@ int main(int argc, char ** argv){
 	mp_A = numroc_(&M, &mb_A, &prow, &i_zero, &nprow);
 	nq_A = numroc_(&N, &nb_A, &pcol, &i_zero, &npcol);
     mp_b = numroc_(&M, &mb_b, &prow, &i_zero, &nprow);
-    nq_b = numroc_(&i_one, &nb_b, &pcol, &i_zero, &npcol);  //should this be 1?//max(1, numroc_(&i_one, &nb_b, &pcol, &i_zero, &npcol));  //should this be 1?
+    nq_b = numroc_(&i_one, &nb_b, &pcol, &i_zero, &npcol);  
     
 	A_distr = malloc(mp_A*nq_A*sizeof(double));
 	if(A_distr == NULL){
@@ -220,40 +216,25 @@ int main(int argc, char ** argv){
     jb = i_one;
    
     Cpdgemr2d(M,N, A, ia, ja, descA, A_distr, i_one, i_one, descA_distr, ctx);  
-    Cpdgemr2d(M,i_one, b, ib, jb, descb, b_distr, i_one, i_one, descb_distr, ctx);
-    //pdgeadd_("N", &M, &N, &one, A, &i_one, &i_one, descA, &zero, A_distr, &i_one, &i_one, descA_distr);
-    //pdgeadd_("N", &M, &i_one, &one, b, &i_one, &i_one, descb, &zero, b_distr, &i_one, &i_one, descb_distr);
-        
+    Cpdgemr2d(M,i_one, b, ib, jb, descb, b_distr, i_one, i_one, descb_distr, ctx);        
     
     //Call to the ScaLAPACK least-square-solution routine. The first call is a query to get the optimal value of lwork.
-    //There are 3 versions of the pdgels call, described in the comment following the call.
-    //The first version solves the LSP on the matrix A_distr, using b as the right hand side matrix. In other words A is distributed, b is not
-    //The second version solves the LSP on the matrix A_distr, using b_distr as the right hand side matrix. In other words A and b are both distributed
-    //The third version solvdes the LSP on the matrix A, using b as the right hand side matrix. In other words A and b are NOT distributed. To use this version,
-    //  the 2 calls to pdgeadd_ that follow must be commented out.
-
     double temp_work[1];
-    //pdgels_("N", &mp_A, &nq_A, &i_one, A_distr, &ia, &ja, descA_distr, b, &ib, &jb, descb, temp_work, &i_neg_one, &info); //distributing only A
-    pdgels_("N", &M, &N, &i_one, A_distr, &i_one, &i_one, descA_distr, b_distr, &i_one, &i_one, descb_distr, temp_work, &i_neg_one, &info); //distributing A and b
-    //pdgels_("N", &M, &N, &i_one, A, &ia, &ja, descA, b, &ib, &jb, descb, temp_work, &i_neg_one, &info); //no distribution
+    pdgels_("N", &M, &N, &i_one, A_distr, &i_one, &i_one, descA_distr, b_distr, &i_one, &i_one, descb_distr, temp_work, &i_neg_one, &info);
     if(info!=0){
         err(1, "Query call of pdgels failed \n");
     }
     lwork = temp_work[0];
     double *work = malloc(lwork * sizeof(double));
 
-    //pdgels_("N", &mp_A, &nq_A, &i_one, A_distr, &ia, &ja, descA_distr, b, &ib, &jb, descb, work, &lwork, &info);  //distributing only A
-    pdgels_("N", &M, &N, &i_one, A_distr, &i_one, &i_one, descA_distr, b_distr, &i_one, &i_one, descb_distr, work, &lwork, &info); //distributing A and b
-    //pdgels_("N", &M, &N, &i_one, A, &ia, &ja, descA, b, &ib, &jb, descb, work, &lwork, &info); //no distribution
+    pdgels_("N", &M, &N, &i_one, A_distr, &i_one, &i_one, descA_distr, b_distr, &i_one, &i_one, descb_distr, work, &lwork, &info);
     if(info!=0){
         err(1, "Call of pdgels failed \n");
     }
     
 
-    //Copy the least-square solution the global matrix b (A doesn't need to be updated: the LSS is contained in b)
-    //pdgeadd_("N", &M, &N, &one, A_distr, &i_one, &i_one, descA_distr, &zero, A, &i_one, &i_one, descA); //leave this commented out
-    //pdgeadd_("N", &M, &i_one, &one, b_distr, &i_one, &i_one, descb_distr, &zero, b, &i_one, &i_one, descb);
-    Cpdgemr2d(M,i_one, b_distr, i_one, i_one, descb_distr, b, ib, jb, descb, ctx);  //i_one might have to be changed to i_zero
+    //Copy the least-square solution into the global matrix b (A doesn't need to be updated: the LSS is contained in b)
+    Cpdgemr2d(M,i_one, b_distr, i_one, i_one, descb_distr, b, ib, jb, descb, ctx); 
     free(A_distr);
     free(b_distr);
 
@@ -286,6 +267,8 @@ int main(int argc, char ** argv){
             for (long m = 1; m <= l; m++)
                 fprintf(g, "%ld\t%ld\t%.18g\t%.18g\n", l, m, data.V[CT(l, m)], data.V[ST(l, m)]);
         }
+
+        //Prints the execution time and residual sum of squares into timer_file
         FILE *e = fopen("timer_file", "w");
         if (e == NULL)
             err(1, "cannot open %s for writing\n", "timer_file");

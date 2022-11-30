@@ -5,3 +5,4 @@ sudo-g5k atp install libscalapack-openmpi-dev
 scp -r PPAR_project_1 mparadina@access.grid5000.fr:nancy
 scp filename mparadina@access.grid5000.fr:nancy/PPAR_project_1
 OAR_JOB_ID=3897665 oarsh gros-97 //access job host
+mpirun -n 961 -machinefile $OAR_NODEFILE ./pmodel3_clean --data /srv/storage/ppar@storage1.nancy.grid5000.fr/ETOPO1_ultra.csv --model out.csv --npoint 150000 --lmax 149

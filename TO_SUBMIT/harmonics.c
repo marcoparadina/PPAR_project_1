@@ -92,14 +92,10 @@ void load_data_points(const char *filename, long npoint, struct data_points *sel
 	else if((strchr(filename,'u')!=NULL) && (strchr(filename,'l')!=NULL) && (strchr(filename,'t')!=NULL) && (strchr(filename,'r')!=NULL) && (strchr(filename,'a')!=NULL)){//ultra
 			nmax=233280000;
 	}
-	
-	//CAUTION: THIS ONLY WORK FOR THE ULTRA DATASET
-	//nmax = 233280000;
 
 	long step = floor(nmax/npoint);
 	step = fmax(step,1);
-	//printf("nmax/npoint = step : %d / %d = %d \n",nmax, npoint, step);
-
+	
 	double t1, t2, t3;
 
 	for (long i = 1; i <= step*npoint; i++) {
@@ -178,7 +174,6 @@ void computeP(const struct spherical_harmonics *self, double *P, double sinphi)
 		P[PT(l, l - 1)] = sinphi * sqrt(2 * (l - 1) + 3) * temp;
 		temp = -sqrt(1.0 + 0.5 / l) * cosphi * temp;
 		P[PT(l, l)] = temp;
-    //printf("%d",temp);
 	}
 }
 
