@@ -4,9 +4,13 @@
 
 `model.c` solves the least square problem using the DGELS LAPACK function.
 
-`pmodel.c` is garbage
+`pmodel3_clean.c` is the final version
 
-`pmodel2.c` is an attempt to focus parallelization on QR decomposition with ScaLAPACK
+`run_all.sh` can be submitted as a job to grid5000. It will install scalapack on all nodes and run pmodel3_clean
+
+`install_scalapack.sh` can be called in g5k from a node to install scalapack on all nodes that are currently being used
+
+`valgrind_command.txt` calls valgrind on pmodel3_clean and prints the error log into a file
 
 ## Compiling ##
 
@@ -14,7 +18,7 @@ Just run the `Makefile` with the command `make`
 
 ## Installing LAPACK ##
 
-sudo apt-get install liblapack3
+`sudo apt-get install liblapack3~
 
 
 ## Calling a LAPACK function in C ##
