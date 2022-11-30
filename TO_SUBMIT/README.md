@@ -16,7 +16,7 @@ Before compiling, the ScaLAPACK library must be installed. On grid5000 this can 
 
 ## Setting parameters ##
 
-* The dimension of the process grid must be set accordingly to how many processes are being used for the computation. These can be set in the `NPROWS`, `NPCOLS` macros in `pmodel.c`.
+* The dimension of the process grid must be set accordingly to how many processes are being used for the computation. These can be set in the `NPROW`, `NPCOL` macros in `pmodel.c`.
 * The blocking parameters can be modified. This can be done at lines 128-131 of `pmodel.c` by changing the values of `mb_A`, `nb_A`, `mb_b`, `nb_b` variables.
 
 
