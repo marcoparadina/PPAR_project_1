@@ -5,7 +5,6 @@
 #include <assert.h>
 #include <sys/time.h>
 #include <inttypes.h>
-#include <string.h>
 
 #include "harmonics.h"
 
@@ -41,11 +40,11 @@ void human_format(char * target, long n) {
 }
 
 
-void setup_spherical_harmonics(long lmax, struct spherical_harmonics *self)
+void setup_spherical_harmonics(int lmax, struct spherical_harmonics *self)
 {
 	self->lmax = lmax;
-	long sizeCS = (lmax + 1) * (lmax + 1);
-	long sizeAB = (lmax + 1) * (lmax + 2) / 2;
+	int sizeCS = (lmax + 1) * (lmax + 1);
+	int sizeAB = (lmax + 1) * (lmax + 2) / 2;
 
 	self->CS = malloc(sizeCS * sizeof(double));
 	self->A = malloc(sizeAB * sizeof(double));
@@ -54,10 +53,10 @@ void setup_spherical_harmonics(long lmax, struct spherical_harmonics *self)
 		err(1, "cannot allocate harmonics\n");
 
 	/* compute the A, B coefficients */
-	for (long l = 2; l <= lmax; l++) {
+	for (int l = 2; l <= lmax; l++) {
 		double ls = l * l;
 		double lm1s = (l - 1) * (l - 1);
-		for (long m = 0; m < l - 1; m++) {
+		for (int m = 0; m < l - 1; m++) {
 			double ms = m * m;
 			self->A[PT(l, m)] = sqrt((4 * ls - 1) / (ls - ms));
 			self->B[PT(l, m)] = -sqrt((lm1s - ms) / (4 * lm1s - 1));
@@ -65,7 +64,7 @@ void setup_spherical_harmonics(long lmax, struct spherical_harmonics *self)
 	}
 }
 
-void load_data_points(const char *filename, long npoint, struct data_points *self)
+void load_data_points(const char *filename, int npoint, struct data_points *self)
 {
 	self->npoint = npoint;
 	self->phi = malloc(npoint * sizeof(double));
@@ -77,54 +76,9 @@ void load_data_points(const char *filename, long npoint, struct data_points *sel
 	FILE *f = fopen(filename, "r");
 	if (f == NULL)
 		err(1, "cannot open %s", filename);
-
-	long nmax=0;
 	
-	if((strchr(filename,'s')!=NULL) && (strchr(filename,'m')!=NULL) && (strchr(filename,'l')!=NULL) && (strchr(filename,'a')!=NULL)){//small
-		nmax=64800;
-	}
-	else if((strchr(filename,'m')!=NULL) && (strchr(filename,'e')!=NULL) && (strchr(filename,'d')!=NULL) && (strchr(filename,'i')!=NULL) && (strchr(filename,'u')!=NULL)){//medium
-		nmax=583200;
-	}
-	else if((strchr(filename,'h')!=NULL) && (strchr(filename,'i')!=NULL) && (strchr(filename,'g')!=NULL)){//high
-		nmax=6480000;
-	}
-	else if((strchr(filename,'u')!=NULL) && (strchr(filename,'l')!=NULL) && (strchr(filename,'t')!=NULL) && (strchr(filename,'r')!=NULL) && (strchr(filename,'a')!=NULL)){//ultra
-			nmax=233280000;
-	}
 
-	long step = floor(nmax/npoint);
-	step = fmax(step,1);
-	
-	/*
-	double t1, t2, t3;
-	for (long i = 1; i <= step*npoint; i++) {
-		if(i%step==0){
-			long k = fscanf(f, "%lg %lg %lg", &self->lambda[i/step], &self->phi[i/step], &self->V[i/step]);
-
-			if (k == EOF) {
-				if (ferror(f))
-					err(1, "read error");
-				errx(1, "premature end-of-file after %ld records", i);
-			}
-			if (k != 3){
-				errx(1, "parse error on line %ld", i+1);}
-		}
-		else{
-			long k = fscanf(f,"%lg %lg %lg", &t1, &t2, &t3);
-
-			if (k == EOF) {
-				if (ferror(f))
-					err(1, "read error");
-				errx(1, "premature end-of-file after %ld records", i);
-			}
-			if (k != 3){
-
-				errx(1, "parse error on line %ld", i+1);}
-		}
-	}
-	*/
-	for (int i = 0; i <= npoint+step; i+=step) {
+	for (int i = 0; i < npoint; i++) {
 		int k = fscanf(f, "%lg %lg %lg", &self->lambda[i], &self->phi[i], &self->V[i]);
 		if (k == EOF) {
 			if (ferror(f))
@@ -137,18 +91,18 @@ void load_data_points(const char *filename, long npoint, struct data_points *sel
 	fclose(f);
 }
 
-void load_spherical_harmonics(const char *filename, long lmax, struct spherical_harmonics *self)
+void load_spherical_harmonics(const char *filename, int lmax, struct spherical_harmonics *self)
 {
 	FILE *g = fopen(filename, "r");
 	if (g == NULL)
 		err(1, "cannot open %s", filename);
 	setup_spherical_harmonics(lmax, self);
 	for (;;) {
-		long l, m;
+		int l, m;
 		double c, s;
-		long k = fscanf(g, "%ld %ld %lg %lg", &l, &m, &c, &s);
+		int k = fscanf(g, "%d %d %lg %lg", &l, &m, &c, &s);
 		if (m == 0 && s != 0)
-			errx(1, "non-zero S coefficient with l=%ld and m=0", l);
+			errx(1, "non-zero S coefficient with l=%d and m=0", l);
 		self->CS[CT(l, m)] = c;
 		if (m > 0)
 			self->CS[ST(l, m)] = s;
@@ -179,8 +133,8 @@ void computeP(const struct spherical_harmonics *self, double *P, double sinphi)
 	P[PT(1, 0)] = sinphi * sqrt(3) * temp;
 	temp = 0.5 * sqrt(3) * cosphi * temp;
 	P[PT(1, 1)] = temp;
-	for (long l = 2; l <= self->lmax; l++) {
-		for (long m = 0; m < l - 1; m++)
+	for (int l = 2; l <= self->lmax; l++) {
+		for (int m = 0; m < l - 1; m++)
 			P[PT(l, m)] = self->A[PT(l, m)] * (sinphi * P[PT(l - 1, m)] + self->B[PT(l, m)] * P[PT(l - 2, m)]);
 		P[PT(l, l - 1)] = sinphi * sqrt(2 * (l - 1) + 3) * temp;
 		temp = -sqrt(1.0 + 0.5 / l) * cosphi * temp;
@@ -190,24 +144,24 @@ void computeP(const struct spherical_harmonics *self, double *P, double sinphi)
 
 double evaluate(const struct spherical_harmonics *self, const double *P, double lambda)
 {
-	long lmax = self->lmax;
-	long sizeCS = (lmax + 1) * (lmax + 1);
+	int lmax = self->lmax;
+	int sizeCS = (lmax + 1) * (lmax + 1);
 	double scratch[sizeCS];
 
-	for (long l = 0; l <= lmax; l++) {
+	for (int l = 0; l <= lmax; l++) {
 		/* zonal term */
 		scratch[CT(l, 0)] = P[PT(l, 0)];
 
 		/* tesseral terms */
-		for (long m = 1; m <= l; m++) {
+		for (int m = 1; m <= l; m++) {
 			scratch[CT(l, m)] = P[PT(l, m)] * cos(m * lambda);
 			scratch[ST(l, m)] = P[PT(l, m)] * sin(m * lambda);
 		}
 	}
 
 	/* dot product */
-	double V = 0;
-	for (long i = 0; i < sizeCS; i++)
+	double V = 0;	
+	for (int i = 0; i < sizeCS; i++)
 		V += scratch[i] * self->CS[i];
 	return V;
 }
