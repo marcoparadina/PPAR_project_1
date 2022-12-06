@@ -80,6 +80,7 @@ void load_data_points(const char *filename, long npoint, struct data_points *sel
 
 	long nmax=0;
 	
+	/*
 	if((strchr(filename,'s')!=NULL) && (strchr(filename,'m')!=NULL) && (strchr(filename,'l')!=NULL) && (strchr(filename,'a')!=NULL)){//small
 		nmax=64800;
 	}
@@ -92,16 +93,13 @@ void load_data_points(const char *filename, long npoint, struct data_points *sel
 	else if((strchr(filename,'u')!=NULL) && (strchr(filename,'l')!=NULL) && (strchr(filename,'t')!=NULL) && (strchr(filename,'r')!=NULL) && (strchr(filename,'a')!=NULL)){//ultra
 			nmax=233280000;
 	}
-	
-	//CAUTION: THIS ONLY WORK FOR THE ULTRA DATASET
-	//nmax = 233280000;
-
+	*/
+	long nmax=233280000;
 	long step = floor(nmax/npoint);
 	step = fmax(step,1);
-	//printf("nmax/npoint = step : %d / %d = %d \n",nmax, npoint, step);
-
+	
+	/*
 	double t1, t2, t3;
-
 	for (long i = 1; i <= step*npoint; i++) {
 		if(i%step==0){
 			long k = fscanf(f, "%lg %lg %lg", &self->lambda[i/step], &self->phi[i/step], &self->V[i/step]);
@@ -126,6 +124,17 @@ void load_data_points(const char *filename, long npoint, struct data_points *sel
 
 				errx(1, "parse error on line %ld", i+1);}
 		}
+	}
+	*/
+	for (int i = 0; i < npoint; i+=step) {
+		int k = fscanf(f, "%lg %lg %lg", &self->lambda[i], &self->phi[i], &self->V[i]);
+		if (k == EOF) {
+			if (ferror(f))
+				err(1, "read error");
+			errx(1, "premature end-of-file after %d records", i);
+		}
+		if (k != 3)
+			errx(1, "parse error on line %d", i+1);
 	}
 	fclose(f);
 }
@@ -178,7 +187,6 @@ void computeP(const struct spherical_harmonics *self, double *P, double sinphi)
 		P[PT(l, l - 1)] = sinphi * sqrt(2 * (l - 1) + 3) * temp;
 		temp = -sqrt(1.0 + 0.5 / l) * cosphi * temp;
 		P[PT(l, l)] = temp;
-    //printf("%d",temp);
 	}
 }
 

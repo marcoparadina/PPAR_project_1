@@ -16,3 +16,21 @@ funk -m free -r gros:54 -w 14:00:00 -p ./run_all -y
 mpirun -n 900 -machinefile $OAR_NODEFILE ./pmodel3_clean --data /srv/storage/ppar@storage1.nancy.grid5000.fr/ETOPO1_ultra.csv --model out_ultra.csv --npoint 120000 --lmax 149
 
 ./validate --data /srv/storage/ppar@storage1.nancy.grid5000.fr/ETOPO1_ultra.csv --model out_ultra.csv --lmax 124 
+
+New harmonics, npoint 648000, lmax 9, high:
+Successfully read model
+Reading data points from /home/para/Downloads/ETOPO1_high.csv
+Completed in 12.4 s
+Average error 4.67481e+08 meters
+Max error 5.91745e+09 meters
+Standard Deviation 1.08825e+09
+
+Old harmonics, npoint 648000, lmax 9, high:
+Reading order-9 model from out.csv
+Successfully read model
+Reading data points from /home/para/Downloads/ETOPO1_high.csv
+Completed in 9.8 s
+Average error 4.89759e+08 meters
+Max error 6.34568e+09 meters
+Standard Deviation 1.2163e+09
+
